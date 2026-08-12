@@ -1,4 +1,19 @@
+# Python
 .venv/
-.env
 __pycache__/
-*.pyc
+*.py[cod]
+
+# Environment / secrets
+.env
+.env.*
+
+# Private resume data
+resumes/master/
+
+# Generated resumes
+resumes/generated/*.tex
+resumes/generated/*.pdf
+
+# IDE
+.vscode/
+.idea/
