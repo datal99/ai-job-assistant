@@ -18,3 +18,6 @@ resumes/generated/*.pdf
 # IDE
 .vscode/
 .idea/
+
+# Local test files
+/test/

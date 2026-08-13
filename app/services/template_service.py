@@ -54,6 +54,15 @@ def create_resume_template() -> Path:
 
     return TEMPLATE_CV_PATH
 
+def load_resume_template() -> str:
+    """Load the resume template."""
+
+    if not TEMPLATE_CV_PATH.exists():
+        raise FileNotFoundError(
+            f"Resume template not found at: {TEMPLATE_CV_PATH}"
+        )
+
+    return TEMPLATE_CV_PATH.read_text(encoding="utf-8")
 
 def replace_section(
     latex: str,

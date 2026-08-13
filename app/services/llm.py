@@ -2,6 +2,9 @@ import os
 
 from dotenv import load_dotenv
 from openai import OpenAI
+from typing import TypeVar
+
+from pydantic import BaseModel
 
 from app.models import JobAnalysisResponse
 from app.models.tailored_resume import TailoredResume
@@ -10,6 +13,20 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+T = TypeVar("T", bound=BaseModel)
+
+
+def parse(
+    prompt: str,
+    response_model: type[T],
+) -> T:
+    response = client.responses.parse(
+        model="gpt-5-mini",
+        input=prompt,
+        text_format=response_model,
+    )
+
+    return response.output_parsed
 
 def analyze_job(prompt: str) -> JobAnalysisResponse:
     response = client.responses.parse(

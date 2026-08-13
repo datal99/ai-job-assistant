@@ -1,4 +1,6 @@
 from pathlib import Path
+from datetime import date
+
 
 from app.models import TailoredResume
 from app.services.llm import generate_tailored_resume
@@ -34,4 +36,26 @@ def tailor_resume(job_description: str) -> TailoredResume:
     return generate_tailored_resume(
         job_description=job_description,
         master_resume=master_resume,
+    )
+
+import re
+from datetime import date
+
+
+def build_resume_filename(
+    company: str,
+    job_title: str,
+) -> str:
+    def sanitize(value: str) -> str:
+        value = re.sub(r"[^A-Za-z0-9]+", "-", value)
+        return value.strip("-")
+
+    company = sanitize(company)
+    job_title = sanitize(job_title)
+
+    return (
+        f"{date.today().isoformat()}"
+        f"_{company}"
+        f"_{job_title}"
+        f"_CV_Submitted.tex"
     )
