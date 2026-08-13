@@ -4,4 +4,4 @@ from .job import (
     JobAnalysisResponse,
 )
 
-from .resume import TailoredResume
+from .tailored_resume import TailoredResume

@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from app.models import JobAnalysisResponse
-from app.models.resume import TailoredResume
+from app.models.tailored_resume import TailoredResume
 
 load_dotenv()
 
@@ -22,7 +22,7 @@ def analyze_job(prompt: str) -> JobAnalysisResponse:
 
 def generate_tailored_resume(
     job_description: str,
-    master_cv: str,
+    master_resume: str,
 ) -> TailoredResume:
     prompt = f"""
 You are an expert technical resume writer.
@@ -48,7 +48,7 @@ JOB DESCRIPTION:
 {job_description}
 
 MASTER CV:
-{master_cv}
+{master_resume}
 """
 
     response = client.responses.parse(

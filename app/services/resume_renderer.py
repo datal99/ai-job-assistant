@@ -1,88 +1,146 @@
 from pathlib import Path
 
-from app.models.resume import TailoredResume
+from app.models.master_resume import MasterResume
+from app.models.tailored_resume import TailoredResume
 
-
-TEMPLATE_CV_PATH = Path(
+TEMPLATE_RESUME_PATH = Path(
     "resumes/templates/resume_template.tex"
 )
 
+def escape_latex(text: str) -> str:
+    replacements = {
+        "\\": r"\textbackslash{}",
+        "&": r"\&",
+        "%": r"\%",
+        "$": r"\$",
+        "#": r"\#",
+        "_": r"\_",
+        "{": r"\{",
+        "}": r"\}",
+        "~": r"\textasciitilde{}",
+        "^": r"\textasciicircum{}",
+    }
+
+    for char, replacement in replacements.items():
+        text = text.replace(char, replacement)
+
+    return text
+
 
 def load_resume_template() -> str:
-    if not TEMPLATE_CV_PATH.exists():
+    if not TEMPLATE_RESUME_PATH.exists():
         raise FileNotFoundError(
-            f"Resume template not found at: {TEMPLATE_CV_PATH}"
+            f"Resume template not found at: {TEMPLATE_RESUME_PATH}"
         )
 
-    return TEMPLATE_CV_PATH.read_text(encoding="utf-8")
+    return TEMPLATE_RESUME_PATH.read_text(encoding="utf-8")
 
 
 def render_summary(summary: str) -> str:
     return summary
 
 
-def render_experience(resume: TailoredResume) -> str:
+def render_experience(
+    master_resume: MasterResume,
+    tailored_resume: TailoredResume,
+) -> str:
+    if len(master_resume.experience) != len(tailored_resume.experience):
+        raise ValueError(
+            "Master and tailored experience counts do not match."
+        )
+
     sections = []
 
-    for experience in resume.experience:
+    for master, tailored in zip(
+        master_resume.experience,
+        tailored_resume.experience,
+    ):
         bullets = "\n".join(
-            f"\\resumeItem{{}}{{{bullet}}}"
-            for bullet in experience.bullets
+            f"\\resumeItem{{{escape_latex(bullet.header)}}}"
+            f"{{{escape_latex(bullet.content)}}}"
+            for bullet in tailored.bullets
         )
 
         sections.append(
             f"""\\resumeSubheading
-{{{experience.company}}}{{}}
-{{{experience.position}}}{{}}
+{{{escape_latex(master.company)}}}{{{escape_latex(master.location)}}}
+{{{escape_latex(master.position)}}}{{{escape_latex(master.dates)}}}
 \\resumeItemListStart
 {bullets}
 \\resumeItemListEnd"""
         )
 
-    return "\n".join(sections)
+    return f"""\\resumeSubHeadingListStart
+{"\n".join(sections)}
+\\resumeSubHeadingListEnd"""
 
 
-def render_projects(resume: TailoredResume) -> str:
-    return "\n".join(
-        f"\\resumeSubItem{{{project.name}:}}{{{project.description}}}"
-        for project in resume.projects
+def render_projects(
+    tailored_resume: TailoredResume,
+) -> str:
+    projects = "\n".join(
+        f"\\resumeSubItem{{{escape_latex(project.name)}:}}"
+        f"{{{escape_latex(project.description)}}}"
+        for project in tailored_resume.projects
     )
 
+    return f"""\\resumeSubHeadingListStart
+{projects}
+\\resumeSubHeadingListEnd"""
 
-def render_technical_skills(resume: TailoredResume) -> str:
-    skills = resume.technical_skills
+
+def render_technical_skills(
+    tailored_resume: TailoredResume,
+) -> str:
+    skills = tailored_resume.technical_skills
 
     sections = [
-        f"\\textbf{{Programming:}} {', '.join(skills.programming)}",
-        f"\\textbf{{AI & Agent Development:}} "
-        f"{', '.join(skills.ai_and_agent_development)}",
-        f"\\textbf{{Frameworks & Technologies:}} "
-        f"{', '.join(skills.frameworks_and_technologies)}",
+        f"\\textbf{{Programming:}} "
+        f"{escape_latex(', '.join(skills.programming))} \\\\",
+
+        f"\\textbf{{AI \\& Agent Development:}} "
+        f"{escape_latex(', '.join(skills.ai_and_agent_development))} \\\\",
+
+        f"\\textbf{{Frameworks \\& Technologies:}} "
+        f"{escape_latex(', '.join(skills.frameworks_and_technologies))} \\\\",
+
         f"\\textbf{{Software Engineering:}} "
-        f"{', '.join(skills.software_engineering)}",
-        f"\\textbf{{Databases:}} {', '.join(skills.databases)}",
-        f"\\textbf{{Testing & Quality:}} "
-        f"{', '.join(skills.testing_and_quality)}",
+        f"{escape_latex(', '.join(skills.software_engineering))} \\\\",
+
+        f"\\textbf{{Databases:}} "
+        f"{escape_latex(', '.join(skills.databases))} \\\\",
+
+        f"\\textbf{{Testing \\& Quality:}} "
+        f"{escape_latex(', '.join(skills.testing_and_quality))} \\\\",
+
         f"\\textbf{{Development Tools:}} "
-        f"{', '.join(skills.development_tools)}",
-        f"\\textbf{{Cloud & Architecture:}} "
-        f"{', '.join(skills.cloud_and_architecture)}",
+        f"{escape_latex(', '.join(skills.development_tools))} \\\\",
+
+        f"\\textbf{{Cloud \\& Architecture:}} "
+        f"{escape_latex(', '.join(skills.cloud_and_architecture))} \\\\",
+
         f"\\textbf{{Development Practices:}} "
-        f"{', '.join(skills.development_practices)}",
+        f"{escape_latex(', '.join(skills.development_practices))}",
     ]
 
-    return " \\\\\n".join(sections)
+    return "\n".join(sections)
 
 
 def render_resume(
     template: str,
-    resume: TailoredResume,
+    master_resume_data: MasterResume,
+    tailored_resume: TailoredResume,
 ) -> str:
     replacements = {
-        "{{SUMMARY}}": render_summary(resume.summary),
-        "{{EXPERIENCE}}": render_experience(resume),
-        "{{PROJECTS}}": render_projects(resume),
-        "{{TECHNICAL_SKILLS}}": render_technical_skills(resume),
+        "{{SUMMARY}}": tailored_resume.summary,
+        "{{EXPERIENCE}}": render_experience(
+            master_resume_data,
+            tailored_resume,
+        ),
+        "{{PROJECTS}}": render_projects(tailored_resume),
+        "{{TECHNICAL_SKILLS}}": render_technical_skills(
+            tailored_resume
+        ),
     }
 
     latex = template

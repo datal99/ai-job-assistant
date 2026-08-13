@@ -1,10 +1,15 @@
 from pydantic import BaseModel
 
 
+class TailoredBullet(BaseModel):
+    header: str
+    content: str
+
+
 class TailoredExperience(BaseModel):
     company: str
     position: str
-    bullets: list[str]
+    bullets: list[TailoredBullet]
 
 
 class TailoredProject(BaseModel):
