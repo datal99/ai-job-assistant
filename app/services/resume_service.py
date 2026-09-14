@@ -1,9 +1,14 @@
-from pathlib import Path
+import re
 from datetime import date
-
+from pathlib import Path
 
 from app.models import TailoredResume
+from app.models.job_posting import JobPosting
+from app.services.job_posting_service import extract_job_posting
 from app.services.llm import generate_tailored_resume
+from app.services.master_resume_parser import extract_master_resume_data
+from app.services.resume_renderer import render_resume
+from app.services.template_service import load_resume_template
 
 
 MASTER_RESUME_PATH = Path("resumes/master/master_resume.tex")
@@ -38,9 +43,6 @@ def tailor_resume(job_description: str) -> TailoredResume:
         master_resume=master_resume,
     )
 
-import re
-from datetime import date
-
 
 def build_resume_filename(
     company: str,
@@ -59,3 +61,26 @@ def build_resume_filename(
         f"_{job_title}"
         f"_CV_Submitted.tex"
     )
+
+
+def generate_resume_from_job_posting(
+    raw_job_posting: str,
+) -> tuple[JobPosting, Path]:
+    """Create and save a tailored resume from a raw job posting."""
+    job_posting = extract_job_posting(raw_job_posting)
+    tailored_resume = tailor_resume(job_posting.description)
+    master_resume_data = extract_master_resume_data()
+    template = load_resume_template()
+
+    rendered_resume = render_resume(
+        template=template,
+        master_resume_data=master_resume_data,
+        tailored_resume=tailored_resume,
+    )
+    filename = build_resume_filename(
+        company=job_posting.company,
+        job_title=job_posting.title,
+    )
+    output_path = save_generated_resume(filename, rendered_resume)
+
+    return job_posting, output_path

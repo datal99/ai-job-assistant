@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from app.models.master_resume import MasterResume
@@ -21,10 +22,8 @@ def escape_latex(text: str) -> str:
         "^": r"\textasciicircum{}",
     }
 
-    for char, replacement in replacements.items():
-        text = text.replace(char, replacement)
-
-    return text
+    pattern = re.compile("|".join(re.escape(char) for char in replacements))
+    return pattern.sub(lambda match: replacements[match.group(0)], text)
 
 
 def load_resume_template() -> str:
@@ -37,7 +36,7 @@ def load_resume_template() -> str:
 
 
 def render_summary(summary: str) -> str:
-    return summary
+    return escape_latex(summary)
 
 
 def render_experience(
@@ -132,7 +131,7 @@ def render_resume(
     tailored_resume: TailoredResume,
 ) -> str:
     replacements = {
-        "{{SUMMARY}}": tailored_resume.summary,
+        "{{SUMMARY}}": render_summary(tailored_resume.summary),
         "{{EXPERIENCE}}": render_experience(
             master_resume_data,
             tailored_resume,

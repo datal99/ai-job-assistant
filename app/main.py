@@ -3,6 +3,11 @@ from pydantic import BaseModel
 
 from app.services.llm import analyze_job
 from app.models import JobAnalysisResponse
+from app.models.generated_resume import (
+    GeneratedResumeResponse,
+    GenerateResumeRequest,
+)
+from app.services.resume_service import generate_resume_from_job_posting
 
 app = FastAPI()
 
@@ -39,3 +44,16 @@ Analyze the candidate and return:
 """
 
     return analyze_job(prompt)
+
+
+@app.post("/resumes/tailor", response_model=GeneratedResumeResponse)
+def generate_resume(request: GenerateResumeRequest):
+    job_posting, output_path = generate_resume_from_job_posting(
+        request.job_posting
+    )
+
+    return GeneratedResumeResponse(
+        company=job_posting.company,
+        job_title=job_posting.title,
+        filename=output_path.name,
+    )
