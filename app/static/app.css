@@ -211,6 +211,40 @@ textarea:focus {
   box-shadow: 0 0 0 4px rgba(57, 131, 87, 0.13);
 }
 
+.output-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid #d8d8cb;
+  border-radius: 0.8rem;
+  background: #fafaf5;
+  cursor: pointer;
+}
+
+.output-option input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0.15rem 0 0;
+  accent-color: #23643e;
+}
+
+.output-option span {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.output-option small {
+  color: #718078;
+  font-weight: 500;
+}
+
+.output-option:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .form-footer {
   display: flex;
   align-items: center;
@@ -331,6 +365,17 @@ button:disabled {
 
 .result-actions {
   margin-top: 0.55rem;
+}
+
+.result-file {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.4rem;
+}
+
+.result-file > span {
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .text-link {

@@ -16,6 +16,10 @@ resumes/templates/
 resumes/generated/*.tex
 resumes/generated/*.pdf
 
+# Private and generated cover letters
+cover_letters/master/
+cover_letters/generated/
+
 # Local document tooling
 tools/tectonic/
 

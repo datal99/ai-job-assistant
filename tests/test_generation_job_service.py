@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.models.job_posting import JobPosting
+from app.services.cover_letter_service import MissingCoverLetterTemplate
 from app.services.generation_job_service import GenerationJobManager
 
 
@@ -81,6 +82,65 @@ class GenerationJobManagerTests(unittest.TestCase):
         self.assertEqual(
             manager.get(job_id).error,
             "Upload a compatible master resume before generating.",
+        )
+
+    @patch(
+        "app.services.generation_job_service.generate_cover_letter"
+    )
+    @patch(
+        "app.services.generation_job_service.load_master_cover_letter",
+        return_value="cover template",
+    )
+    @patch(
+        "app.services.generation_job_service.generate_resume_from_job_posting"
+    )
+    def test_job_can_generate_resume_and_cover_letter(
+        self,
+        generate_resume,
+        load_cover_letter,
+        generate_cover_letter,
+    ):
+        job = JobPosting(
+            company="Example Labs",
+            title="Software Engineer",
+            description="Build services.",
+        )
+        generate_resume.return_value = (
+            job,
+            Path("resumes/generated/resume.tex"),
+        )
+
+        def generate_letter(job_posting, template, progress_callback):
+            progress_callback("tailoring_cover_letter")
+            progress_callback("rendering_cover_letter")
+            return Path("cover_letters/generated/letter.tex")
+
+        generate_cover_letter.side_effect = generate_letter
+        manager = GenerationJobManager()
+        job_id = manager.create()
+
+        manager.run(job_id, "raw posting", include_cover_letter=True)
+        status = manager.get(job_id)
+
+        self.assertEqual(status.status, "completed")
+        self.assertEqual(status.result.filename, "resume.tex")
+        self.assertEqual(status.result.cover_letter_filename, "letter.tex")
+        load_cover_letter.assert_called_once_with()
+        generate_cover_letter.assert_called_once()
+
+    @patch(
+        "app.services.generation_job_service.load_master_cover_letter",
+        side_effect=MissingCoverLetterTemplate("missing"),
+    )
+    def test_missing_cover_letter_fails_before_resume_generation(self, load):
+        manager = GenerationJobManager()
+        job_id = manager.create()
+
+        manager.run(job_id, "raw posting", include_cover_letter=True)
+
+        self.assertEqual(
+            manager.get(job_id).error,
+            "Upload a compatible master cover letter before generating one.",
         )
 
 

@@ -12,6 +12,11 @@ from app.models.generated_resume import (
     GenerationStage,
     GenerationStatus,
 )
+from app.services.cover_letter_service import (
+    MissingCoverLetterTemplate,
+    generate_cover_letter,
+    load_master_cover_letter,
+)
 from app.services.resume_service import generate_resume_from_job_posting
 
 
@@ -55,16 +60,34 @@ class GenerationJobManager:
             job.status = "running"
             job.stage = stage
 
-    def run(self, job_id: str, raw_job_posting: str) -> None:
+    def run(
+        self,
+        job_id: str,
+        raw_job_posting: str,
+        include_cover_letter: bool = False,
+    ) -> None:
         try:
+            cover_letter_template = (
+                load_master_cover_letter() if include_cover_letter else None
+            )
             job_posting, output_path = generate_resume_from_job_posting(
                 raw_job_posting,
                 progress_callback=lambda stage: self.update_stage(job_id, stage),
             )
+            cover_letter_path = None
+            if include_cover_letter:
+                cover_letter_path = generate_cover_letter(
+                    job_posting,
+                    template=cover_letter_template,
+                    progress_callback=lambda stage: self.update_stage(job_id, stage),
+                )
             result = GeneratedResumeResponse(
                 company=job_posting.company,
                 job_title=job_posting.title,
                 filename=output_path.name,
+                cover_letter_filename=(
+                    cover_letter_path.name if cover_letter_path else None
+                ),
             )
         except APIConnectionError:
             self.fail(
@@ -78,6 +101,12 @@ class GenerationJobManager:
                 "OpenAI could not complete the request. Please try again.",
             )
             return
+        except MissingCoverLetterTemplate:
+            self.fail(
+                job_id,
+                "Upload a compatible master cover letter before generating one.",
+            )
+            return
         except FileNotFoundError:
             self.fail(
                 job_id,
@@ -85,7 +114,10 @@ class GenerationJobManager:
             )
             return
         except ValueError as error:
-            self.fail(job_id, f"The resume could not be rendered: {error}")
+            self.fail(
+                job_id,
+                f"The application materials could not be rendered: {error}",
+            )
             return
         except Exception:
             logger.exception(

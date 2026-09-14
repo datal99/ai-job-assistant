@@ -10,10 +10,11 @@
     <main class="page-shell">
       <section class="intro" aria-labelledby="page-title">
         <p class="eyebrow">AI Job Assistant</p>
-        <h1 id="page-title">Tailor your resume to the role.</h1>
+        <h1 id="page-title">Tailor your application to the role.</h1>
         <p class="lede">
           Paste a complete job posting. The assistant will identify the role,
-          tailor your master resume, and prepare a LaTeX file for review.
+          tailor your master resume, and optionally prepare a matching cover
+          letter for review.
         </p>
       </section>
 
@@ -40,7 +41,30 @@
         <div id="master-message" class="inline-message" role="status" aria-live="polite" hidden></div>
       </section>
 
-      <section class="workspace generator-panel" aria-label="Resume generator">
+      <section class="workspace master-panel" aria-labelledby="cover-letter-title">
+        <div>
+          <p class="section-kicker">Source document</p>
+          <h2 id="cover-letter-title">Master cover letter</h2>
+          <p id="cover-letter-status" class="section-copy">Checking your cover letter template...</p>
+        </div>
+
+        <div class="master-actions">
+          <div id="cover-letter-file-actions" class="file-actions" hidden>
+            <a href="/cover-letters/master/latex" target="_blank">View LaTeX</a>
+            <a href="/cover-letters/master/latex?download=true">Download LaTeX</a>
+            <a class="pdf-action" href="/cover-letters/master/pdf" target="_blank">View PDF</a>
+            <a class="pdf-action" href="/cover-letters/master/pdf?download=true">Download PDF</a>
+          </div>
+
+          <label class="upload-button" for="master-cover-letter-file">
+            <span id="cover-letter-upload-label">Upload master cover letter</span>
+            <input id="master-cover-letter-file" type="file" accept=".tex,text/x-tex">
+          </label>
+        </div>
+        <div id="cover-letter-message" class="inline-message" role="status" aria-live="polite" hidden></div>
+      </section>
+
+      <section class="workspace generator-panel" aria-label="Application generator">
         <form id="resume-form">
           <label for="job-posting">Job posting</label>
           <textarea
@@ -51,6 +75,14 @@
             placeholder="Paste the company, job title, requirements, and responsibilities here..."
             required
           ></textarea>
+
+          <label class="output-option" for="include-cover-letter">
+            <input id="include-cover-letter" type="checkbox">
+            <span>
+              <strong>Also generate a cover letter</strong>
+              <small id="cover-letter-option-note">Requires a master cover letter template.</small>
+            </span>
+          </label>
 
           <div class="form-footer">
             <span id="character-count">0 characters</span>

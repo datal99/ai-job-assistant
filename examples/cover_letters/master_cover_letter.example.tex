@@ -1,0 +1,63 @@
+% Synthetic single-file cover letter template
+\documentclass[12pt]{letter}
+\usepackage[utf8]{inputenc}
+\usepackage[empty]{fullpage}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{fontawesome5}
+\usepackage{eso-pic}
+\usepackage{charter}
+
+\addtolength{\topmargin}{-0.5in}
+\addtolength{\textheight}{1.0in}
+\definecolor{gr}{RGB}{225,225,225}
+
+\newcommand{\myname}{Alex Morgan}
+\newcommand{\mytitle}{Software Engineer}
+\newcommand{\myemail}{alex.morgan@example.com}
+\newcommand{\mylinkedin}{alex-morgan-example}
+\newcommand{\myphone}{555.010.2048}
+\newcommand{\mylocation}{Raleigh, NC}
+\newcommand{\recipient}{{{RECIPIENT}}}
+\newcommand{\greeting}{Dear}
+\newcommand{\closer}{Kind regards}
+\newcommand{\company}{{{COMPANY}}}
+
+\begin{document}
+\AddToShipoutPictureBG{%
+  \color{gr}
+  \AtPageUpperLeft{\rule[-1.55in]{\paperwidth}{1.55in}}
+}
+
+\begin{center}
+  {\fontsize{28}{34}\selectfont\scshape \myname}\\[0.12in]
+  {\small
+    \href{mailto:\myemail}{\faEnvelope\enspace \myemail}\hspace{0.35in}
+    \href{https://linkedin.com/in/\mylinkedin}{\faLinkedinIn\enspace linkedin.com/in/\mylinkedin}
+  }\\[0.08in]
+  {\small
+    \href{tel:\myphone}{\faPhone\enspace \myphone}\hspace{0.35in}
+    \faMapMarker\enspace \mylocation
+  }
+\end{center}
+
+\vspace{0.25in}
+\today\par
+\vspace{0.08in}
+\recipient\par
+\company\par
+\vspace{0.12in}
+\greeting\ \recipient,\par
+
+\vspace{0.1in}
+\setlength{\parindent}{24pt}
+\noindent {{BODY}}
+
+\vspace{0.1in}
+\vfill
+\begin{flushright}
+  \closer,\\
+  \myname\\
+  \mytitle
+\end{flushright}
+\end{document}

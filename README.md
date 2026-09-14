@@ -1,9 +1,9 @@
 # AI Job Assistant
 
 AI Job Assistant turns a private LaTeX master resume and a raw job posting into
-a tailored, reviewable resume. It addresses a familiar job-search problem:
-adapting a resume to each role is valuable, but repetitive, slow, and easy to do
-inconsistently.
+a tailored, reviewable application package. It can produce both a resume and a
+matching cover letter while keeping reusable contact information and formatting
+in local source documents.
 
 The master resume remains the source of truth. An OpenAI model prioritizes and
 rewrites supported material, and the application renders the structured result
@@ -15,12 +15,14 @@ or experience.
 ## Features
 
 - Upload or replace a compatible LaTeX master resume
+- Upload or replace a self-contained LaTeX cover letter template
 - Preserve a local backup when the master resume is replaced
 - Extract the company, title, and description from a pasted job posting
 - Tailor summaries, experience bullets, projects, and technical skills
+- Optionally write a grounded, role-specific cover letter in the same run
 - Show real generation stages with an elapsed-time indicator
-- View or download master and generated resumes as LaTeX
-- Compile, view, and download PDFs with Tectonic or another LaTeX engine
+- View or download master and generated documents as LaTeX
+- Compile, view, and download resume and cover-letter PDFs
 - Validate uploads, job postings, generated filenames, and API failures
 - Keep private and generated resume files outside Git
 
@@ -42,7 +44,8 @@ FastAPI application
    |-- Job manager -------- elapsed time and real stage updates
    |-- Job parser --------- structured company/title/description
    |-- Resume tailor ------ content grounded in the master resume
-   |-- LaTeX renderer ----- escaped, template-based output
+   |-- Letter writer ------ optional, grounded cover-letter paragraphs
+   |-- LaTeX renderers ---- escaped, template-based output
    `-- PDF compiler ------- Tectonic / pdfLaTeX / XeLaTeX / LuaLaTeX
              |
              v
@@ -96,11 +99,13 @@ uvicorn app.main:app --reload
 
 Open <http://127.0.0.1:8000>. Upload
 [`examples/resumes/master_resume.example.tex`](examples/resumes/master_resume.example.tex),
+upload
+[`examples/cover_letters/master_cover_letter.example.tex`](examples/cover_letters/master_cover_letter.example.tex),
 paste [`examples/job_descriptions/software_engineer.txt`](examples/job_descriptions/software_engineer.txt),
-and select **Generate tailored resume**.
+choose whether to include a cover letter, and select **Generate tailored resume**.
 
-The first upload creates the private `resumes/master/` and
-`resumes/templates/` files needed by the generation workflow.
+The first uploads create the private files under `resumes/` and
+`cover_letters/` needed by the generation workflow.
 
 ## PDF setup
 
@@ -132,10 +137,13 @@ python -m unittest discover -s tests -v
 | `GET` | `/health` | Service health check |
 | `GET` | `/resumes/master` | Master-resume and PDF capability status |
 | `POST` | `/resumes/master` | Validate and replace the master resume |
+| `GET` | `/cover-letters/master` | Cover-letter template status |
+| `POST` | `/cover-letters/master` | Validate and replace the cover-letter template |
 | `POST` | `/resumes/tailor/jobs` | Start background resume generation |
 | `GET` | `/resumes/tailor/jobs/{job_id}` | Poll generation status |
 | `GET` | `/resumes/master/{format}` | View or download master LaTeX/PDF |
 | `GET` | `/resumes/generated/{filename}/{format}` | View/download generated output |
+| `GET` | `/cover-letters/generated/{filename}/{format}` | View/download a generated cover letter |
 
 Interactive documentation is available at <http://127.0.0.1:8000/docs> while
 the application is running.
@@ -148,6 +156,8 @@ the application is running.
 - Resume files use the local filesystem rather than object storage.
 - Model output can omit relevant material or phrase it poorly. Always review the
   generated LaTeX or PDF before submitting it.
+- Including a cover letter adds another model request, increasing generation
+  time and API usage.
 - The grounding prompt reduces fabrication risk but cannot guarantee factual
   accuracy. The user remains responsible for every claim in the final resume.
 - LaTeX templates requiring unavailable packages may fail PDF compilation.
@@ -170,6 +180,7 @@ The following remain local and are excluded from version control:
 - `resumes/master/`
 - `resumes/templates/`
 - generated `.tex` and `.pdf` resumes
+- private and generated files under `cover_letters/`
 - `tools/tectonic/`
 
 The files under `examples/` are synthetic and safe to publish.

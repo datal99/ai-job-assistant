@@ -7,12 +7,14 @@ class GenerateResumeRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     job_posting: str = Field(min_length=40, max_length=50_000)
+    include_cover_letter: bool = False
 
 
 class GeneratedResumeResponse(BaseModel):
     company: str
     job_title: str
     filename: str
+    cover_letter_filename: str | None = None
 
 
 class MasterResumeUploadRequest(BaseModel):
@@ -31,6 +33,8 @@ GenerationStage = Literal[
     "reading_job_posting",
     "tailoring_resume",
     "rendering_resume",
+    "tailoring_cover_letter",
+    "rendering_cover_letter",
     "complete",
 ]
 

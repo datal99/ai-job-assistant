@@ -169,7 +169,7 @@ def compile_resume_pdf(tex_path: Path) -> Path:
             if output
         )[-2500:]
         raise LatexCompilationError(
-            "LaTeX could not compile this resume. "
+            "LaTeX could not compile this document. "
             f"Compiler output: {details.strip()}"
         )
 

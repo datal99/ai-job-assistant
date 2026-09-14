@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from app.models import JobAnalysisResponse
 from app.models.tailored_resume import TailoredResume
+from app.models.tailored_cover_letter import TailoredCoverLetter
 
 load_dotenv()
 
@@ -75,3 +76,44 @@ MASTER CV:
     )
 
     return response.output_parsed
+
+
+def generate_tailored_cover_letter(
+    job_description: str,
+    company: str,
+    job_title: str,
+    master_resume: str,
+) -> TailoredCoverLetter:
+    prompt = f"""
+You are an expert technical cover letter writer.
+
+Use the master resume below as the only source of truth. Write a concise,
+specific cover letter for the role. Return three to five polished paragraphs.
+
+Structure:
+- Open with interest in the exact role and the strongest supported fit.
+- Connect current and earlier experience to the role's responsibilities.
+- Explain specific interest in the company without inventing company facts.
+- Close with a brief statement of interest in an interview.
+
+Rules:
+- Do not invent experience, skills, projects, qualifications, metrics, or facts.
+- Do not repeat contact details, a date, greeting, or signature.
+- Do not use bullet points, headings, placeholders, or LaTeX commands.
+- Avoid generic enthusiasm, exaggerated claims, and unsupported assertions.
+- Keep the complete letter body under 500 words.
+
+COMPANY:
+{company}
+
+JOB TITLE:
+{job_title}
+
+JOB DESCRIPTION:
+{job_description}
+
+MASTER RESUME:
+{master_resume}
+"""
+
+    return parse(prompt=prompt, response_model=TailoredCoverLetter)

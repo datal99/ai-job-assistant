@@ -17,6 +17,14 @@ from app.models.generated_resume import (
     MasterResumeUploadRequest,
 )
 from app.services.generation_job_service import generation_jobs
+from app.services.cover_letter_service import (
+    GENERATED_COVER_LETTER_DIR,
+    MASTER_COVER_LETTER_PATH,
+    MissingCoverLetterTemplate,
+    generate_cover_letter,
+    load_master_cover_letter,
+    replace_master_cover_letter,
+)
 from app.services.resume_file_service import (
     LatexCompilationError,
     LatexCompilerUnavailable,
@@ -91,9 +99,18 @@ Analyze the candidate and return:
 @app.post("/resumes/tailor", response_model=GeneratedResumeResponse)
 def generate_resume(request: GenerateResumeRequest):
     try:
+        cover_letter_template = (
+            load_master_cover_letter() if request.include_cover_letter else None
+        )
         job_posting, output_path = generate_resume_from_job_posting(
             request.job_posting
         )
+        cover_letter_path = None
+        if request.include_cover_letter:
+            cover_letter_path = generate_cover_letter(
+                job_posting,
+                template=cover_letter_template,
+            )
     except APIConnectionError as error:
         raise HTTPException(
             status_code=503,
@@ -103,6 +120,11 @@ def generate_resume(request: GenerateResumeRequest):
         raise HTTPException(
             status_code=502,
             detail="OpenAI could not complete the request. Please try again.",
+        ) from error
+    except MissingCoverLetterTemplate as error:
+        raise HTTPException(
+            status_code=409,
+            detail="Upload a compatible master cover letter before generating one.",
         ) from error
     except FileNotFoundError as error:
         raise HTTPException(
@@ -119,6 +141,9 @@ def generate_resume(request: GenerateResumeRequest):
         company=job_posting.company,
         job_title=job_posting.title,
         filename=output_path.name,
+        cover_letter_filename=(
+            cover_letter_path.name if cover_letter_path else None
+        ),
     )
 
 
@@ -132,6 +157,7 @@ def start_resume_generation(
         generation_jobs.run,
         job_id,
         request.job_posting,
+        request.include_cover_letter,
     )
     return GenerationJobCreated(job_id=job_id)
 
@@ -177,6 +203,36 @@ def upload_master_resume(request: MasterResumeUploadRequest):
     return master_resume_status()
 
 
+@app.get("/cover-letters/master", response_model=MasterResumeStatus)
+def master_cover_letter_status():
+    return MasterResumeStatus(
+        exists=MASTER_COVER_LETTER_PATH.is_file(),
+        filename=MASTER_COVER_LETTER_PATH.name,
+        pdf_supported=find_latex_engine() is not None,
+    )
+
+
+@app.post("/cover-letters/master", response_model=MasterResumeStatus)
+def upload_master_cover_letter(request: MasterResumeUploadRequest):
+    if (
+        Path(request.filename).name != request.filename
+        or Path(request.filename).suffix.lower() != ".tex"
+    ):
+        raise HTTPException(status_code=400, detail="Upload a .tex file.")
+
+    try:
+        replace_master_cover_letter(request.content)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except OSError as error:
+        raise HTTPException(
+            status_code=500,
+            detail="The master cover letter could not be saved.",
+        ) from error
+
+    return master_cover_letter_status()
+
+
 def serve_resume_file(
     tex_path: Path,
     file_format: str,
@@ -218,6 +274,11 @@ def get_master_resume(file_format: str, download: bool = False):
     return serve_resume_file(MASTER_RESUME_PATH, file_format, download)
 
 
+@app.get("/cover-letters/master/{file_format}", include_in_schema=False)
+def get_master_cover_letter(file_format: str, download: bool = False):
+    return serve_resume_file(MASTER_COVER_LETTER_PATH, file_format, download)
+
+
 @app.get(
     "/resumes/generated/{filename}/{file_format}",
     include_in_schema=False,
@@ -231,5 +292,22 @@ def get_generated_resume(
 
     if Path(filename).name != filename or output_path.suffix != ".tex":
         raise HTTPException(status_code=404, detail="Resume not found.")
+
+    return serve_resume_file(output_path, file_format, download)
+
+
+@app.get(
+    "/cover-letters/generated/{filename}/{file_format}",
+    include_in_schema=False,
+)
+def get_generated_cover_letter(
+    filename: str,
+    file_format: str,
+    download: bool = False,
+):
+    output_path = GENERATED_COVER_LETTER_DIR / filename
+
+    if Path(filename).name != filename or output_path.suffix != ".tex":
+        raise HTTPException(status_code=404, detail="Cover letter not found.")
 
     return serve_resume_file(output_path, file_format, download)
