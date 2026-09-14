@@ -1,8 +1,10 @@
 import re
 from datetime import date
 from pathlib import Path
+from typing import Callable
 
 from app.models import TailoredResume
+from app.models.generated_resume import GenerationStage
 from app.models.job_posting import JobPosting
 from app.services.job_posting_service import extract_job_posting
 from app.services.llm import generate_tailored_resume
@@ -11,8 +13,9 @@ from app.services.resume_renderer import render_resume
 from app.services.template_service import load_resume_template
 
 
-MASTER_RESUME_PATH = Path("resumes/master/master_resume.tex")
-GENERATED_RESUME_DIR = Path("resumes/generated")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+MASTER_RESUME_PATH = PROJECT_ROOT / "resumes/master/master_resume.tex"
+GENERATED_RESUME_DIR = PROJECT_ROOT / "resumes/generated"
 
 
 def load_master_resume() -> str:
@@ -65,10 +68,20 @@ def build_resume_filename(
 
 def generate_resume_from_job_posting(
     raw_job_posting: str,
+    progress_callback: Callable[[GenerationStage], None] | None = None,
 ) -> tuple[JobPosting, Path]:
     """Create and save a tailored resume from a raw job posting."""
+    def report(stage: GenerationStage) -> None:
+        if progress_callback:
+            progress_callback(stage)
+
+    report("reading_job_posting")
     job_posting = extract_job_posting(raw_job_posting)
+
+    report("tailoring_resume")
     tailored_resume = tailor_resume(job_posting.description)
+
+    report("rendering_resume")
     master_resume_data = extract_master_resume_data()
     template = load_resume_template()
 

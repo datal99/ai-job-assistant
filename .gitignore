@@ -15,6 +15,9 @@ resumes/templates/
 resumes/generated/*.tex
 resumes/generated/*.pdf
 
+# Local document tooling
+tools/tectonic/
+
 # IDE
 .vscode/
 .idea/

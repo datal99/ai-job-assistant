@@ -4,9 +4,8 @@ from pathlib import Path
 from app.models.master_resume import MasterResume
 from app.models.tailored_resume import TailoredResume
 
-TEMPLATE_RESUME_PATH = Path(
-    "resumes/templates/resume_template.tex"
-)
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+TEMPLATE_RESUME_PATH = PROJECT_ROOT / "resumes/templates/resume_template.tex"
 
 def escape_latex(text: str) -> str:
     replacements = {
@@ -39,6 +38,11 @@ def render_summary(summary: str) -> str:
     return escape_latex(summary)
 
 
+def render_bullet_header(header: str) -> str:
+    normalized_header = header.strip().removesuffix(":").rstrip()
+    return f"{escape_latex(normalized_header)}:"
+
+
 def render_experience(
     master_resume: MasterResume,
     tailored_resume: TailoredResume,
@@ -55,7 +59,7 @@ def render_experience(
         tailored_resume.experience,
     ):
         bullets = "\n".join(
-            f"\\resumeItem{{{escape_latex(bullet.header)}}}"
+            f"\\resumeItem{{{render_bullet_header(bullet.header)}}}"
             f"{{{escape_latex(bullet.content)}}}"
             for bullet in tailored.bullets
         )

@@ -1,8 +1,9 @@
 from pathlib import Path
 
 
-MASTER_CV_PATH = Path("resumes/master/master_cv.tex")
-TEMPLATE_CV_PATH = Path("resumes/templates/resume_template.tex")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+MASTER_CV_PATH = PROJECT_ROOT / "resumes/master/master_resume.tex"
+TEMPLATE_CV_PATH = PROJECT_ROOT / "resumes/templates/resume_template.tex"
 
 
 def create_resume_template() -> Path:

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Job Assistant</title>
+    <link rel="stylesheet" href="/static/app.css">
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">AI Job Assistant</p>
+        <h1 id="page-title">Tailor your resume to the role.</h1>
+        <p class="lede">
+          Paste a complete job posting. The assistant will identify the role,
+          tailor your master resume, and prepare a LaTeX file for review.
+        </p>
+      </section>
+
+      <section class="workspace master-panel" aria-labelledby="master-title">
+        <div>
+          <p class="section-kicker">Source document</p>
+          <h2 id="master-title">Master resume</h2>
+          <p id="master-status" class="section-copy">Checking your master resume...</p>
+        </div>
+
+        <div class="master-actions">
+          <div id="master-file-actions" class="file-actions" hidden>
+            <a href="/resumes/master/latex" target="_blank">View LaTeX</a>
+            <a href="/resumes/master/latex?download=true">Download LaTeX</a>
+            <a class="pdf-action" href="/resumes/master/pdf" target="_blank">View PDF</a>
+            <a class="pdf-action" href="/resumes/master/pdf?download=true">Download PDF</a>
+          </div>
+
+          <label class="upload-button" for="master-resume-file">
+            <span id="upload-label">Upload master resume</span>
+            <input id="master-resume-file" type="file" accept=".tex,text/x-tex">
+          </label>
+        </div>
+        <div id="master-message" class="inline-message" role="status" aria-live="polite" hidden></div>
+      </section>
+
+      <section class="workspace generator-panel" aria-label="Resume generator">
+        <form id="resume-form">
+          <label for="job-posting">Job posting</label>
+          <textarea
+            id="job-posting"
+            name="job-posting"
+            rows="16"
+            minlength="40"
+            placeholder="Paste the company, job title, requirements, and responsibilities here..."
+            required
+          ></textarea>
+
+          <div class="form-footer">
+            <span id="character-count">0 characters</span>
+            <button id="generate-button" type="submit">
+              Generate tailored resume
+            </button>
+          </div>
+        </form>
+
+        <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+      </section>
+    </main>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

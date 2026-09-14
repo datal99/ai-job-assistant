@@ -4,7 +4,8 @@ from pathlib import Path
 from app.models.master_resume import MasterExperience, MasterResume
 
 
-MASTER_RESUME_PATH = Path("resumes/master/master_resume.tex")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+MASTER_RESUME_PATH = PROJECT_ROOT / "resumes/master/master_resume.tex"
 
 
 def extract_master_resume_data() -> MasterResume:

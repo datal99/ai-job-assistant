@@ -1,6 +1,10 @@
 import unittest
 
-from app.services.resume_renderer import escape_latex, render_summary
+from app.services.resume_renderer import (
+    escape_latex,
+    render_bullet_header,
+    render_summary,
+)
 
 
 class LatexEscapingTests(unittest.TestCase):
@@ -19,6 +23,16 @@ class LatexEscapingTests(unittest.TestCase):
         self.assertEqual(
             render_summary("AI & platform engineer"),
             r"AI \& platform engineer",
+        )
+
+    def test_bullet_header_gets_exactly_one_colon(self):
+        self.assertEqual(
+            render_bullet_header("Application Integration"),
+            "Application Integration:",
+        )
+        self.assertEqual(
+            render_bullet_header("Application Integration:"),
+            "Application Integration:",
         )
 
 
