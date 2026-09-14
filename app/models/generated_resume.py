@@ -1,10 +1,12 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class GenerateResumeRequest(BaseModel):
-    job_posting: str
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    job_posting: str = Field(min_length=40, max_length=50_000)
 
 
 class GeneratedResumeResponse(BaseModel):

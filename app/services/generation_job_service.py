@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from threading import Lock
@@ -14,6 +15,9 @@ from app.models.generated_resume import (
 from app.services.resume_service import generate_resume_from_job_posting
 
 
+logger = logging.getLogger(__name__)
+
+
 @dataclass
 class GenerationJob:
     job_id: str
@@ -25,13 +29,20 @@ class GenerationJob:
 
 
 class GenerationJobManager:
-    def __init__(self) -> None:
+    def __init__(self, max_jobs: int = 100) -> None:
+        if max_jobs < 1:
+            raise ValueError("max_jobs must be at least 1")
+
         self._jobs: dict[str, GenerationJob] = {}
         self._lock = Lock()
+        self._max_jobs = max_jobs
 
     def create(self) -> str:
         job_id = uuid4().hex
         with self._lock:
+            while len(self._jobs) >= self._max_jobs:
+                oldest_job_id = next(iter(self._jobs))
+                self._jobs.pop(oldest_job_id)
             self._jobs[job_id] = GenerationJob(
                 job_id=job_id,
                 started_at=datetime.now(timezone.utc),
@@ -67,7 +78,20 @@ class GenerationJobManager:
                 "OpenAI could not complete the request. Please try again.",
             )
             return
+        except FileNotFoundError:
+            self.fail(
+                job_id,
+                "Upload a compatible master resume before generating.",
+            )
+            return
+        except ValueError as error:
+            self.fail(job_id, f"The resume could not be rendered: {error}")
+            return
         except Exception:
+            logger.exception(
+                "Unexpected resume generation failure",
+                extra={"job_id": job_id},
+            )
             self.fail(
                 job_id,
                 "The resume could not be generated. Check the server log and try again.",

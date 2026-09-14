@@ -36,7 +36,11 @@ class WebUiTests(unittest.TestCase):
 
         response = self.client.post(
             "/resumes/tailor",
-            json={"job_posting": "Example Labs needs a Python engineer."},
+            json={
+                "job_posting": (
+                    "Example Labs needs a Python engineer to build reliable APIs."
+                )
+            },
         )
 
         self.assertEqual(response.status_code, 200)
@@ -70,7 +74,11 @@ class WebUiTests(unittest.TestCase):
 
         created = self.client.post(
             "/resumes/tailor/jobs",
-            json={"job_posting": "Example Labs needs a Python engineer."},
+            json={
+                "job_posting": (
+                    "Example Labs needs a Python engineer to build reliable APIs."
+                )
+            },
         )
         status = self.client.get(
             f"/resumes/tailor/jobs/{created.json()['job_id']}"
@@ -90,11 +98,60 @@ class WebUiTests(unittest.TestCase):
 
         response = self.client.post(
             "/resumes/tailor",
-            json={"job_posting": "Example Labs needs a Python engineer."},
+            json={
+                "job_posting": (
+                    "Example Labs needs a Python engineer to build reliable APIs."
+                )
+            },
         )
 
         self.assertEqual(response.status_code, 503)
         self.assertIn("could not connect to OpenAI", response.json()["detail"])
+
+    def test_generate_endpoint_rejects_short_job_posting(self):
+        response = self.client.post(
+            "/resumes/tailor",
+            json={"job_posting": "Too short"},
+        )
+
+        self.assertEqual(response.status_code, 422)
+
+    @patch("app.main.analyze_job")
+    def test_analysis_connection_error_has_helpful_response(self, analyze):
+        analyze.side_effect = APIConnectionError(
+            request=Request("POST", "https://api.openai.com/v1/responses")
+        )
+
+        response = self.client.post(
+            "/analyze",
+            json={
+                "job_description": (
+                    "Build reliable Python services and collaborate across teams."
+                ),
+                "resume": (
+                    "Software engineer who builds reliable Python services and APIs."
+                ),
+            },
+        )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("could not connect to OpenAI", response.json()["detail"])
+
+    @patch("app.main.generate_resume_from_job_posting")
+    def test_missing_master_resume_has_helpful_response(self, generate):
+        generate.side_effect = FileNotFoundError("missing")
+
+        response = self.client.post(
+            "/resumes/tailor",
+            json={
+                "job_posting": (
+                    "Example Labs needs a Python engineer to build reliable APIs."
+                )
+            },
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("Upload a compatible master resume", response.json()["detail"])
 
     def test_generated_resume_can_be_downloaded(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -170,6 +227,15 @@ class WebUiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["exists"])
+
+    def test_master_resume_rejects_filename_with_path_segments(self):
+        response = self.client.post(
+            "/resumes/master",
+            json={"filename": "../resume.tex", "content": "latex source"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["detail"], "Upload a .tex file.")
 
     def test_pdf_route_compiles_and_serves_inline(self):
         with tempfile.TemporaryDirectory() as directory:

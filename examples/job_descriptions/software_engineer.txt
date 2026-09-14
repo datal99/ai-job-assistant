@@ -1,0 +1,18 @@
+Northstar Analytics is hiring a Software Engineer to join its platform team.
+
+The engineer will design and maintain Python web services, build REST APIs with
+FastAPI, write automated tests, and collaborate with product and data teams. The
+role also includes reviewing code, troubleshooting production issues, and
+improving continuous integration workflows.
+
+Required qualifications:
+- Professional software development experience
+- Python and REST API development
+- Automated testing and Git-based workflows
+- Clear written and verbal communication
+
+Preferred qualifications:
+- FastAPI or a comparable web framework
+- PostgreSQL
+- Docker and cloud deployment experience
+- Familiarity with AI-enabled applications

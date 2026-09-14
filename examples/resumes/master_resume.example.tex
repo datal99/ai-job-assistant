@@ -1,0 +1,94 @@
+% Synthetic resume for local testing. No person or employer in this file is real.
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\pagestyle{empty}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-0.6in}
+\addtolength{\textheight}{1.2in}
+
+\titleformat{\section}{\large\scshape\raggedright}{}{0em}{}[\titlerule]
+
+\newcommand{\resumeItem}[2]{
+  \item\small{\textbf{#1} #2}
+}
+\newcommand{\resumeSubheading}[4]{
+  \item
+  \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+    \textbf{#1} & #2 \\
+    \textit{#3} & \textit{#4} \\
+  \end{tabular*}
+}
+\newcommand{\resumeSubItem}[2]{\item\small{\textbf{#1} #2}}
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=*]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE Alex Morgan} \\
+  alex.morgan@example.com $\vert$ github.com/example
+\end{center}
+
+%-----------SUMMARY-----------------
+
+\section{Summary}
+Software engineer experienced in building tested web applications and APIs.
+
+%-----------EDUCATION-----------------
+
+\section{Education}
+\resumeSubHeadingListStart
+  \resumeSubheading
+    {Example State University}{Example City, USA}
+    {Bachelor of Science in Computer Science}{2017 -- 2021}
+\resumeSubHeadingListEnd
+
+%-----------EXPERIENCE-----------------
+
+\section{Experience}
+\resumeSubHeadingListStart
+  \resumeSubheading
+    {Northwind Software}{Remote}
+    {Software Engineer}{2021 -- Present}
+  \resumeItemListStart
+    \resumeItem{API Development:}{Built Python REST APIs for internal tools.}
+    \resumeItem{Testing:}{Created automated tests and improved release confidence.}
+    \resumeItem{Collaboration:}{Worked with product and engineering partners.}
+  \resumeItemListEnd
+\resumeSubHeadingListEnd
+
+%-----------PROJECTS-----------------
+
+\section{Projects}
+\resumeSubHeadingListStart
+  \resumeSubItem{Issue Tracker:}{Built a FastAPI service backed by PostgreSQL.}
+  \resumeSubItem{Deployment Toolkit:}{Containerized services with Docker.}
+\resumeSubHeadingListEnd
+
+%--------TECHNICAL SKILLS------------
+
+\section{Technical Skills}
+\textbf{Programming:} Python, JavaScript, SQL \\
+\textbf{AI \& Agent Development:} OpenAI API, prompt design \\
+\textbf{Frameworks \& Technologies:} FastAPI, REST APIs \\
+\textbf{Software Engineering:} API design, debugging, documentation \\
+\textbf{Databases:} PostgreSQL, SQLite \\
+\textbf{Testing \& Quality:} Unit testing, integration testing \\
+\textbf{Development Tools:} Git, Docker \\
+\textbf{Cloud \& Architecture:} Cloud deployment, service-oriented architecture \\
+\textbf{Development Practices:} Agile, code review
+
+%-----------LANGUAGES-----------------
+
+\section{Languages}
+English: Fluent
+
+\end{document}

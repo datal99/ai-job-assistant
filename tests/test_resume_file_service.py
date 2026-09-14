@@ -1,10 +1,11 @@
 import tempfile
 import unittest
 from pathlib import Path
-from subprocess import CompletedProcess
+from subprocess import CompletedProcess, TimeoutExpired
 from unittest.mock import patch
 
 from app.services.resume_file_service import (
+    LatexCompilationError,
     LatexCompilerUnavailable,
     compile_resume_pdf,
     validate_master_resume,
@@ -78,6 +79,27 @@ class PdfCompilationTests(unittest.TestCase):
         self.assertEqual(result, pdf_path)
         command = run.call_args.args[0]
         self.assertEqual(command[:2], ["tectonic", "--outdir"])
+
+    def test_reports_compiler_timeout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            tex_path = Path(directory) / "resume.tex"
+            tex_path.write_text("latex", encoding="utf-8")
+
+            with (
+                patch(
+                    "app.services.resume_file_service.find_latex_engine",
+                    return_value="pdflatex",
+                ),
+                patch(
+                    "app.services.resume_file_service.subprocess.run",
+                    side_effect=TimeoutExpired("pdflatex", 120),
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    LatexCompilationError,
+                    "timed out after 120 seconds",
+                ):
+                    compile_resume_pdf(tex_path)
 
     def test_tectonic_normalizes_legacy_hyperref_driver(self):
         with tempfile.TemporaryDirectory() as directory:

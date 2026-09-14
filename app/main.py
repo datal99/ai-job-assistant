@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from openai import APIConnectionError, OpenAIError
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -36,8 +36,10 @@ APP_DIR = Path(__file__).resolve().parent
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 
 class JobAnalysisRequest(BaseModel):
-    job_description: str
-    resume: str
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    job_description: str = Field(min_length=40, max_length=50_000)
+    resume: str = Field(min_length=40, max_length=1_000_000)
 
 
 @app.get("/", include_in_schema=False)
@@ -72,7 +74,18 @@ Analyze the candidate and return:
 - A short overall summary
 """
 
-    return analyze_job(prompt)
+    try:
+        return analyze_job(prompt)
+    except APIConnectionError as error:
+        raise HTTPException(
+            status_code=503,
+            detail="The app could not connect to OpenAI. Check the network and try again.",
+        ) from error
+    except OpenAIError as error:
+        raise HTTPException(
+            status_code=502,
+            detail="OpenAI could not complete the request. Please try again.",
+        ) from error
 
 
 @app.post("/resumes/tailor", response_model=GeneratedResumeResponse)
@@ -90,6 +103,16 @@ def generate_resume(request: GenerateResumeRequest):
         raise HTTPException(
             status_code=502,
             detail="OpenAI could not complete the request. Please try again.",
+        ) from error
+    except FileNotFoundError as error:
+        raise HTTPException(
+            status_code=409,
+            detail="Upload a compatible master resume before generating.",
+        ) from error
+    except ValueError as error:
+        raise HTTPException(
+            status_code=422,
+            detail=f"The resume could not be rendered: {error}",
         ) from error
 
     return GeneratedResumeResponse(
@@ -135,13 +158,21 @@ def master_resume_status():
 
 @app.post("/resumes/master", response_model=MasterResumeStatus)
 def upload_master_resume(request: MasterResumeUploadRequest):
-    if Path(request.filename).suffix.lower() != ".tex":
+    if (
+        Path(request.filename).name != request.filename
+        or Path(request.filename).suffix.lower() != ".tex"
+    ):
         raise HTTPException(status_code=400, detail="Upload a .tex file.")
 
     try:
         replace_master_resume(request.content)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    except OSError as error:
+        raise HTTPException(
+            status_code=500,
+            detail="The master resume could not be saved.",
+        ) from error
 
     return master_resume_status()
 

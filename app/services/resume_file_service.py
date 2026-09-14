@@ -131,14 +131,27 @@ def compile_resume_pdf(tex_path: Path) -> Path:
             str(tex_path),
         ]
 
-    result = subprocess.run(
-        command,
-        cwd=tex_path.parent,
-        capture_output=True,
-        text=True,
-        timeout=120,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            command,
+            cwd=tex_path.parent,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        if temporary_source:
+            temporary_source.unlink(missing_ok=True)
+        raise LatexCompilationError(
+            "LaTeX compilation timed out after 120 seconds."
+        ) from error
+    except OSError as error:
+        if temporary_source:
+            temporary_source.unlink(missing_ok=True)
+        raise LatexCompilationError(
+            "The configured LaTeX engine could not be started."
+        ) from error
 
     for suffix in (".aux", ".log", ".out", ".xdv"):
         compilation_path.with_suffix(suffix).unlink(missing_ok=True)
