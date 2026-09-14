@@ -13,6 +13,7 @@ from app.models.tailored_cover_letter import TailoredCoverLetter
 load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+MODEL = "gpt-5.6-terra"
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -22,7 +23,7 @@ def parse(
     response_model: type[T],
 ) -> T:
     response = client.responses.parse(
-        model="gpt-5-mini",
+        model=MODEL,
         input=prompt,
         text_format=response_model,
     )
@@ -31,7 +32,7 @@ def parse(
 
 def analyze_job(prompt: str) -> JobAnalysisResponse:
     response = client.responses.parse(
-        model="gpt-5-mini",
+        model=MODEL,
         input=prompt,
         text_format=JobAnalysisResponse
     )
@@ -42,7 +43,16 @@ def generate_tailored_resume(
     job_description: str,
     master_resume: str,
 ) -> TailoredResume:
-    prompt = f"""
+    prompt = build_resume_tailoring_prompt(job_description, master_resume)
+
+    return parse(prompt=prompt, response_model=TailoredResume)
+
+
+def build_resume_tailoring_prompt(
+    job_description: str,
+    master_resume: str,
+) -> str:
+    return f"""
 You are an expert technical resume writer.
 
 Use the master CV below as the source of truth.
@@ -56,7 +66,19 @@ Important rules:
 - Technical skills listed in the Technical Skills section may be emphasized in the summary or skills section, but must not be added to individual experience bullets unless supported by that specific experience.
 - Do not upgrade "familiar with", "concepts", or similar wording into professional hands-on experience.
 - Prioritize experience, projects, and skills that are relevant to the job description.
-- Rewrite the summary to emphasize relevant qualifications and experience.
+- Rebuild the summary from the supported facts; treat the master summary as
+  evidence, not as a writing template.
+- Write exactly three complete summary sentences totaling roughly 45 to 70 words.
+- Sentence one should identify the candidate, years of experience, and the most
+  relevant type of work.
+- Sentence two should naturally connect no more than four to six relevant
+  technologies or capabilities to that experience.
+- Sentence three should state the candidate's relevant engineering strengths or
+  contribution without generic marketing language.
+- Make the summary read as a professional introduction, not a compressed skills
+  inventory. Do not use sentence fragments, first-person language, "proven",
+  parenthetical keyword lists, or unsupported adjectives.
+- Mention AI or LLM work only when the job description makes it relevant.
 - Rewrite experience bullets to emphasize relevant responsibilities and technologies without changing their factual meaning.
 - Select and tailor the most relevant projects.
 - Preserve factual accuracy.
@@ -68,14 +90,6 @@ JOB DESCRIPTION:
 MASTER CV:
 {master_resume}
 """
-
-    response = client.responses.parse(
-        model="gpt-5-mini",
-        input=prompt,
-        text_format=TailoredResume,
-    )
-
-    return response.output_parsed
 
 
 def generate_tailored_cover_letter(

@@ -22,6 +22,12 @@ class PublicExampleTests(unittest.TestCase):
 
         validate_master_resume(content)
 
+    def test_synthetic_resume_keeps_headings_with_content(self):
+        content = SYNTHETIC_RESUME.read_text(encoding="utf-8")
+
+        self.assertIn(r"\usepackage{needspace}", content)
+        self.assertIn(r"\Needspace{7\baselineskip}", content)
+
     def test_synthetic_master_resume_builds_a_template(self):
         with tempfile.TemporaryDirectory() as directory:
             template_path = Path(directory) / "resume_template.tex"

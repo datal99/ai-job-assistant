@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TailoredBullet(BaseModel):
@@ -30,7 +30,13 @@ class TailoredSkills(BaseModel):
 
 
 class TailoredResume(BaseModel):
-    summary: str
+    summary: str = Field(
+        description=(
+            "Exactly three complete sentences and roughly 45 to 70 words. "
+            "A natural professional introduction focused on the target role, "
+            "not a keyword list."
+        )
+    )
     experience: list[TailoredExperience]
     projects: list[TailoredProject]
     technical_skills: TailoredSkills
