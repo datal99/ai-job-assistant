@@ -1,10 +1,15 @@
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
+from app.models import JobAnalysisResponse
 from app.models.tailored_resume import TailoredResume
 from app.services.llm import (
+    MODEL,
+    analyze_job,
     build_resume_tailoring_prompt,
     generate_tailored_resume,
+    parse,
 )
 
 
@@ -36,6 +41,31 @@ class ResumeTailoringPromptTests(unittest.TestCase):
         self.assertIn("exactly three complete summary sentences", prompt)
         self.assertIn("JOB DESCRIPTION:\njob description", prompt)
         self.assertIn("MASTER CV:\nmaster resume", prompt)
+
+
+class ModelConfigurationTests(unittest.TestCase):
+    def test_model_is_gpt_5_6_terra(self):
+        self.assertEqual(MODEL, "gpt-5.6-terra")
+
+    @patch("app.services.llm.client.responses.parse")
+    def test_structured_generation_uses_configured_model(self, responses_parse):
+        expected = TailoredResume.model_construct()
+        responses_parse.return_value = SimpleNamespace(output_parsed=expected)
+
+        result = parse("prompt", TailoredResume)
+
+        self.assertIs(result, expected)
+        self.assertEqual(responses_parse.call_args.kwargs["model"], MODEL)
+
+    @patch("app.services.llm.client.responses.parse")
+    def test_job_analysis_uses_configured_model(self, responses_parse):
+        expected = JobAnalysisResponse.model_construct()
+        responses_parse.return_value = SimpleNamespace(output_parsed=expected)
+
+        result = analyze_job("prompt")
+
+        self.assertIs(result, expected)
+        self.assertEqual(responses_parse.call_args.kwargs["model"], MODEL)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
 \usepackage[empty]{fullpage}
 \usepackage{titlesec}
 \usepackage{enumitem}
+\usepackage{needspace}
 \usepackage{hyperref}
 \pagestyle{empty}
 
@@ -18,6 +19,7 @@
   \item\small{\textbf{#1} #2}
 }
 \newcommand{\resumeSubheading}[4]{
+  \Needspace{7\baselineskip}
   \item
   \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
     \textbf{#1} & #2 \\

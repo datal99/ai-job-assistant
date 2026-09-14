@@ -13,6 +13,7 @@ from app.models.tailored_cover_letter import TailoredCoverLetter
 load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+MODEL = "gpt-5.6-terra"
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -22,7 +23,7 @@ def parse(
     response_model: type[T],
 ) -> T:
     response = client.responses.parse(
-        model="gpt-5-mini",
+        model=MODEL,
         input=prompt,
         text_format=response_model,
     )
@@ -31,7 +32,7 @@ def parse(
 
 def analyze_job(prompt: str) -> JobAnalysisResponse:
     response = client.responses.parse(
-        model="gpt-5-mini",
+        model=MODEL,
         input=prompt,
         text_format=JobAnalysisResponse
     )
