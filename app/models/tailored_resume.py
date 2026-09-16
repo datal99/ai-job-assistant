@@ -32,9 +32,10 @@ class TailoredSkills(BaseModel):
 class TailoredResume(BaseModel):
     summary: str = Field(
         description=(
-            "Exactly three complete sentences and roughly 45 to 70 words. "
-            "A natural professional introduction focused on the target role, "
-            "not a keyword list."
+            "Exactly three concise resume-style statements totaling roughly "
+            "45 to 70 words. Use a pronoun-free, implied-first-person voice "
+            "focused on the target role, not third-person narration or a "
+            "keyword list."
         )
     )
     experience: list[TailoredExperience]

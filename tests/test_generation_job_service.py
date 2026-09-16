@@ -5,6 +5,7 @@ from unittest.mock import patch
 from app.models.job_posting import JobPosting
 from app.services.cover_letter_service import MissingCoverLetterTemplate
 from app.services.generation_job_service import GenerationJobManager
+from app.services.llm import StructuredOutputError
 
 
 class GenerationJobManagerTests(unittest.TestCase):
@@ -82,6 +83,21 @@ class GenerationJobManagerTests(unittest.TestCase):
         self.assertEqual(
             manager.get(job_id).error,
             "Upload a compatible master resume before generating.",
+        )
+
+    @patch(
+        "app.services.generation_job_service.generate_resume_from_job_posting",
+        side_effect=StructuredOutputError("invalid structured response"),
+    )
+    def test_incomplete_openai_response_has_actionable_failure(self, generate):
+        manager = GenerationJobManager()
+        job_id = manager.create()
+
+        manager.run(job_id, "raw posting")
+
+        self.assertEqual(
+            manager.get(job_id).error,
+            "OpenAI returned an incomplete response. Please try again.",
         )
 
     @patch(

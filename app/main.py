@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.services.llm import analyze_job
+from app.services.llm import StructuredOutputError, analyze_job
 from app.models import JobAnalysisResponse
 from app.models.generated_resume import (
     GeneratedResumeResponse,
@@ -94,6 +94,11 @@ Analyze the candidate and return:
             status_code=502,
             detail="OpenAI could not complete the request. Please try again.",
         ) from error
+    except StructuredOutputError as error:
+        raise HTTPException(
+            status_code=502,
+            detail="OpenAI returned an incomplete response. Please try again.",
+        ) from error
 
 
 @app.post("/resumes/tailor", response_model=GeneratedResumeResponse)
@@ -120,6 +125,11 @@ def generate_resume(request: GenerateResumeRequest):
         raise HTTPException(
             status_code=502,
             detail="OpenAI could not complete the request. Please try again.",
+        ) from error
+    except StructuredOutputError as error:
+        raise HTTPException(
+            status_code=502,
+            detail="OpenAI returned an incomplete response. Please try again.",
         ) from error
     except MissingCoverLetterTemplate as error:
         raise HTTPException(
