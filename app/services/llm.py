@@ -1,10 +1,11 @@
 import os
+import logging
 
 from dotenv import load_dotenv
 from openai import OpenAI
 from typing import TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.models import JobAnalysisResponse
 from app.models.tailored_resume import TailoredResume
@@ -14,30 +15,51 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 MODEL = "gpt-5.6-terra"
+STRUCTURED_OUTPUT_ATTEMPTS = 2
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
+
+
+class StructuredOutputError(RuntimeError):
+    """Raised when OpenAI does not return a complete structured response."""
 
 
 def parse(
     prompt: str,
     response_model: type[T],
 ) -> T:
-    response = client.responses.parse(
-        model=MODEL,
-        input=prompt,
-        text_format=response_model,
-    )
+    for attempt in range(1, STRUCTURED_OUTPUT_ATTEMPTS + 1):
+        try:
+            response = client.responses.parse(
+                model=MODEL,
+                input=prompt,
+                text_format=response_model,
+            )
+        except ValidationError:
+            logger.warning(
+                "OpenAI returned invalid structured output (attempt %s of %s)",
+                attempt,
+                STRUCTURED_OUTPUT_ATTEMPTS,
+            )
+            continue
 
-    return response.output_parsed
+        if response.output_parsed is not None:
+            return response.output_parsed
+
+        logger.warning(
+            "OpenAI returned no parsed structured output (attempt %s of %s)",
+            attempt,
+            STRUCTURED_OUTPUT_ATTEMPTS,
+        )
+
+    raise StructuredOutputError(
+        "OpenAI returned an incomplete or invalid structured response."
+    )
 
 def analyze_job(prompt: str) -> JobAnalysisResponse:
-    response = client.responses.parse(
-        model=MODEL,
-        input=prompt,
-        text_format=JobAnalysisResponse
-    )
-
-    return response.output_parsed
+    return parse(prompt=prompt, response_model=JobAnalysisResponse)
 
 def generate_tailored_resume(
     job_description: str,
@@ -68,16 +90,23 @@ Important rules:
 - Prioritize experience, projects, and skills that are relevant to the job description.
 - Rebuild the summary from the supported facts; treat the master summary as
   evidence, not as a writing template.
-- Write exactly three complete summary sentences totaling roughly 45 to 70 words.
-- Sentence one should identify the candidate, years of experience, and the most
+- Write exactly three concise resume-style statements totaling roughly 45 to 70 words.
+- Use a pronoun-free, implied-first-person voice throughout. Natural openings
+  include "Software Engineer with...", "Experienced in...", "Skilled in...",
+  and "Strong background in...".
+- Do not use personal pronouns such as "I", "me", "my", "he", "she", or
+  "they", the candidate's name, or third-person finite-verb constructions such
+  as "builds", "brings", "contributes", or "delivers" to describe the candidate.
+- Statement one should identify the candidate, years of experience, and the most
   relevant type of work.
-- Sentence two should naturally connect no more than four to six relevant
+- Statement two should naturally connect no more than four to six relevant
   technologies or capabilities to that experience.
-- Sentence three should state the candidate's relevant engineering strengths or
-  contribution without generic marketing language.
+- Statement three should describe relevant engineering strengths or contributions
+  using a natural resume construction such as "Strong background in...".
 - Make the summary read as a professional introduction, not a compressed skills
-  inventory. Do not use sentence fragments, first-person language, "proven",
-  parenthetical keyword lists, or unsupported adjectives.
+  inventory. Pronoun-free resume constructions such as "Experienced in..." are
+  allowed. Do not use "proven", parenthetical keyword lists, or unsupported
+  adjectives.
 - Mention AI or LLM work only when the job description makes it relevant.
 - Rewrite experience bullets to emphasize relevant responsibilities and technologies without changing their factual meaning.
 - Select and tailor the most relevant projects.

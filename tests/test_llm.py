@@ -2,6 +2,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from pydantic import ValidationError
+
 from app.models import JobAnalysisResponse
 from app.models.tailored_resume import TailoredResume
 from app.services.llm import (
@@ -10,6 +12,7 @@ from app.services.llm import (
     build_resume_tailoring_prompt,
     generate_tailored_resume,
     parse,
+    StructuredOutputError,
 )
 
 
@@ -20,10 +23,13 @@ class ResumeTailoringPromptTests(unittest.TestCase):
             "Four years of supported software experience.",
         )
 
-        self.assertIn("exactly three complete summary sentences", prompt)
+        self.assertIn("exactly three concise resume-style statements", prompt)
         self.assertIn("45 to 70 words", prompt)
         self.assertIn("not a compressed skills", prompt)
-        self.assertIn('first-person language, "proven"', prompt)
+        self.assertIn("pronoun-free, implied-first-person voice", prompt)
+        self.assertIn('"builds", "brings", "contributes", or "delivers"', prompt)
+        self.assertIn('resume construction such as "Strong background in..."', prompt)
+        self.assertNotIn("sentence fragments, first-person language", prompt)
         self.assertIn("only when the job description makes it relevant", prompt)
         self.assertIn("Build reliable payment services.", prompt)
         self.assertIn("Four years of supported software experience.", prompt)
@@ -38,7 +44,7 @@ class ResumeTailoringPromptTests(unittest.TestCase):
         self.assertIs(result, expected)
         self.assertEqual(parse.call_args.kwargs["response_model"], TailoredResume)
         prompt = parse.call_args.kwargs["prompt"]
-        self.assertIn("exactly three complete summary sentences", prompt)
+        self.assertIn("exactly three concise resume-style statements", prompt)
         self.assertIn("JOB DESCRIPTION:\njob description", prompt)
         self.assertIn("MASTER CV:\nmaster resume", prompt)
 
@@ -56,6 +62,35 @@ class ModelConfigurationTests(unittest.TestCase):
 
         self.assertIs(result, expected)
         self.assertEqual(responses_parse.call_args.kwargs["model"], MODEL)
+
+    @patch("app.services.llm.client.responses.parse")
+    def test_structured_generation_retries_invalid_json(self, responses_parse):
+        invalid = ValidationError.from_exception_data("Test", [])
+        expected = TailoredResume.model_construct()
+        responses_parse.side_effect = [
+            invalid,
+            SimpleNamespace(output_parsed=expected),
+        ]
+
+        result = parse("prompt", TailoredResume)
+
+        self.assertIs(result, expected)
+        self.assertEqual(responses_parse.call_count, 2)
+
+    @patch("app.services.llm.client.responses.parse")
+    def test_structured_generation_has_clear_error_after_retries(
+        self,
+        responses_parse,
+    ):
+        responses_parse.return_value = SimpleNamespace(output_parsed=None)
+
+        with self.assertRaisesRegex(
+            StructuredOutputError,
+            "incomplete or invalid structured response",
+        ):
+            parse("prompt", TailoredResume)
+
+        self.assertEqual(responses_parse.call_count, 2)
 
     @patch("app.services.llm.client.responses.parse")
     def test_job_analysis_uses_configured_model(self, responses_parse):
