@@ -5,6 +5,7 @@ from unittest.mock import patch
 from pydantic import ValidationError
 
 from app.models import JobAnalysisResponse
+from app.models.resume_validation import ResumeValidationResult
 from app.models.tailored_resume import TailoredResume
 from app.services.llm import (
     MODEL,
@@ -13,6 +14,7 @@ from app.services.llm import (
     generate_tailored_resume,
     parse,
     StructuredOutputError,
+    validate_resume_experience,
 )
 
 
@@ -63,6 +65,30 @@ class ModelConfigurationTests(unittest.TestCase):
         self.assertIs(result, expected)
         self.assertEqual(responses_parse.call_args.kwargs["model"], MODEL)
 
+
+class ResumeExperienceValidationPromptTests(unittest.TestCase):
+    @patch("app.services.llm.parse")
+    def test_validation_requires_employer_specific_grounding(self, parse):
+        tailored = TailoredResume.model_construct(experience=[])
+        expected = ResumeValidationResult(is_valid=True, issues=[])
+        parse.return_value = expected
+
+        result = validate_resume_experience("master source", tailored)
+
+        self.assertIs(result, expected)
+        self.assertIs(
+            parse.call_args.kwargs["response_model"],
+            ResumeValidationResult,
+        )
+        prompt = parse.call_args.kwargs["prompt"]
+        self.assertIn("every generated employment-experience bullet", prompt)
+        self.assertIn("correct employer and position", prompt)
+        self.assertIn("does not prove", prompt)
+        self.assertIn("Do not accept a plausible inference", prompt)
+        self.assertIn("master source", prompt)
+
+
+class StructuredOutputParsingTests(unittest.TestCase):
     @patch("app.services.llm.client.responses.parse")
     def test_structured_generation_retries_invalid_json(self, responses_parse):
         invalid = ValidationError.from_exception_data("Test", [])

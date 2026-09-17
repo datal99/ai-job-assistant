@@ -9,6 +9,7 @@ from httpx2 import Request
 
 from app.main import app
 from app.models.job_posting import JobPosting
+from app.services.resume_service import ResumeGroundingError
 
 
 class WebUiTests(unittest.TestCase):
@@ -154,6 +155,27 @@ class WebUiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 409)
         self.assertIn("Upload a compatible master resume", response.json()["detail"])
+
+    @patch("app.main.generate_resume_from_job_posting")
+    def test_unsupported_experience_has_helpful_response(self, generate):
+        generate.side_effect = ResumeGroundingError(
+            "Generated experience could not be verified."
+        )
+
+        response = self.client.post(
+            "/resumes/tailor",
+            json={
+                "job_posting": (
+                    "Example Labs needs a Python engineer to build reliable APIs."
+                )
+            },
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(
+            response.json()["detail"],
+            "Generated experience could not be verified.",
+        )
 
     def test_generated_resume_can_be_downloaded(self):
         with tempfile.TemporaryDirectory() as directory:

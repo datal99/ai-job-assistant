@@ -6,6 +6,7 @@ from app.models.job_posting import JobPosting
 from app.services.cover_letter_service import MissingCoverLetterTemplate
 from app.services.generation_job_service import GenerationJobManager
 from app.services.llm import StructuredOutputError
+from app.services.resume_service import ResumeGroundingError
 
 
 class GenerationJobManagerTests(unittest.TestCase):
@@ -19,6 +20,7 @@ class GenerationJobManagerTests(unittest.TestCase):
             for stage in (
                 "reading_job_posting",
                 "tailoring_resume",
+                "validating_resume",
                 "rendering_resume",
             ):
                 progress_callback(stage)
@@ -49,6 +51,7 @@ class GenerationJobManagerTests(unittest.TestCase):
             [
                 "reading_job_posting",
                 "tailoring_resume",
+                "validating_resume",
                 "rendering_resume",
             ],
         )
@@ -98,6 +101,21 @@ class GenerationJobManagerTests(unittest.TestCase):
         self.assertEqual(
             manager.get(job_id).error,
             "OpenAI returned an incomplete response. Please try again.",
+        )
+
+    @patch(
+        "app.services.generation_job_service.generate_resume_from_job_posting",
+        side_effect=ResumeGroundingError("Unsupported experience claim."),
+    )
+    def test_unsupported_experience_has_actionable_failure(self, generate):
+        manager = GenerationJobManager()
+        job_id = manager.create()
+
+        manager.run(job_id, "raw posting")
+
+        self.assertEqual(
+            manager.get(job_id).error,
+            "Unsupported experience claim.",
         )
 
     @patch(

@@ -32,6 +32,7 @@ GenerationStage = Literal[
     "queued",
     "reading_job_posting",
     "tailoring_resume",
+    "validating_resume",
     "rendering_resume",
     "tailoring_cover_letter",
     "rendering_cover_letter",
