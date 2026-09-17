@@ -1,8 +1,8 @@
 import re
 from pathlib import Path
 
-from app.models.master_resume import MasterResume
-from app.models.tailored_resume import TailoredResume
+from app.models.master_resume import MasterExperience, MasterResume
+from app.models.tailored_resume import TailoredExperience, TailoredResume
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE_RESUME_PATH = PROJECT_ROOT / "resumes/templates/resume_template.tex"
@@ -43,21 +43,58 @@ def render_bullet_header(header: str) -> str:
     return f"{escape_latex(normalized_header)}:"
 
 
+def normalize_experience_identity(value: str) -> str:
+    value = value.replace(r"\&", "&").replace("--", "-")
+    return re.sub(r"\s+", " ", value).strip().casefold()
+
+
+def align_experience(
+    master_resume: MasterResume,
+    tailored_resume: TailoredResume,
+) -> list[tuple[MasterExperience, TailoredExperience]]:
+    """Match generated bullets to fixed experience records by identity."""
+    tailored_by_identity: dict[tuple[str, str], TailoredExperience] = {}
+    for experience in tailored_resume.experience:
+        identity = (
+            normalize_experience_identity(experience.company),
+            normalize_experience_identity(experience.position),
+        )
+        if identity in tailored_by_identity:
+            raise ValueError(
+                "Generated resume contains a duplicate employer and position."
+            )
+        tailored_by_identity[identity] = experience
+
+    aligned = []
+    for experience in master_resume.experience:
+        identity = (
+            normalize_experience_identity(experience.company),
+            normalize_experience_identity(experience.position),
+        )
+        tailored = tailored_by_identity.pop(identity, None)
+        if tailored is None:
+            raise ValueError(
+                "Generated experience does not match the master resume "
+                f"entry for {experience.company} — {experience.position}."
+            )
+        aligned.append((experience, tailored))
+
+    if tailored_by_identity:
+        raise ValueError(
+            "Generated resume contains an experience that is not in the "
+            "master resume."
+        )
+
+    return aligned
+
+
 def render_experience(
     master_resume: MasterResume,
     tailored_resume: TailoredResume,
 ) -> str:
-    if len(master_resume.experience) != len(tailored_resume.experience):
-        raise ValueError(
-            "Master and tailored experience counts do not match."
-        )
-
     sections = []
 
-    for master, tailored in zip(
-        master_resume.experience,
-        tailored_resume.experience,
-    ):
+    for master, tailored in align_experience(master_resume, tailored_resume):
         bullets = "\n".join(
             f"\\resumeItem{{{render_bullet_header(bullet.header)}}}"
             f"{{{escape_latex(bullet.content)}}}"
