@@ -32,6 +32,10 @@ class ResumeTailoringPromptTests(unittest.TestCase):
         self.assertIn('"builds", "brings", "contributes", or "delivers"', prompt)
         self.assertIn('resume construction such as "Strong background in..."', prompt)
         self.assertNotIn("sentence fragments, first-person language", prompt)
+        self.assertIn("two to four core technical areas", prompt)
+        self.assertIn("job posting makes them central responsibilities", prompt)
+        self.assertIn("DevOps, platform, build/release", prompt)
+        self.assertIn('Avoid slash-separated tool clusters such as "Git/GitLab CI/CD"', prompt)
         self.assertIn("only when the job description makes it relevant", prompt)
         self.assertIn("Preserve the primary nature of every employment role", prompt)
         self.assertIn("include all projects from the master CV", prompt)
@@ -71,7 +75,11 @@ class ModelConfigurationTests(unittest.TestCase):
 class ResumeExperienceValidationPromptTests(unittest.TestCase):
     @patch("app.services.llm.parse")
     def test_validation_requires_employer_specific_grounding(self, parse):
-        tailored = TailoredResume.model_construct(experience=[], projects=[])
+        tailored = TailoredResume.model_construct(
+            summary="Software Engineer focused on AI systems.",
+            experience=[],
+            projects=[],
+        )
         expected = ResumeValidationResult(is_valid=True, issues=[])
         parse.return_value = expected
 
@@ -88,6 +96,8 @@ class ResumeExperienceValidationPromptTests(unittest.TestCase):
         )
         prompt = parse.call_args.kwargs["prompt"]
         self.assertIn("generated experience and project selections", prompt)
+        self.assertIn("when the posting centers on DevOps", prompt)
+        self.assertIn('merged labels such as "Git/GitLab CI/CD"', prompt)
         self.assertIn("correct employer and position", prompt)
         self.assertIn("does not prove", prompt)
         self.assertIn("Do not accept a plausible inference", prompt)

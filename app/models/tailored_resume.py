@@ -34,8 +34,10 @@ class TailoredResume(BaseModel):
         description=(
             "Exactly three concise resume-style statements totaling roughly "
             "45 to 70 words. Use a pronoun-free, implied-first-person voice "
-            "focused on the target role, not third-person narration or a "
-            "keyword list."
+            "focused on the target role and the candidate's strongest core "
+            "qualifications. Do not use third-person narration or a keyword "
+            "list. Mention delivery-process tooling as headline content only "
+            "when it is central to the target role."
         )
     )
     experience: list[TailoredExperience]
