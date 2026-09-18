@@ -240,13 +240,138 @@ async function waitForGeneration(
   }
 }
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const withCoverLetter = includeCoverLetter.checked && coverLetterReady;
-  generateButton.disabled = true;
-  generateButton.textContent = withCoverLetter
-    ? "Preparing application..."
-    : "Tailoring resume...";
+const revisionReasons = [
+  ["summary_focus", "Refocus the professional summary"],
+  ["emphasize_programming", "Emphasize programming work"],
+  ["project_selection", "Choose more relevant projects"],
+  ["reduce_keyword_density", "Make the writing less keyword-heavy"],
+  ["preserve_source_detail", "Preserve more master-resume detail"],
+  ["strengthen_ai_relevance", "Highlight relevant AI work"],
+  ["cover_letter_specificity", "Make the cover letter more specific"],
+];
+
+function addResultFile(label, baseUrl) {
+  const group = document.createElement("div");
+  group.className = "result-file";
+  const fileLabel = document.createElement("span");
+  fileLabel.textContent = label;
+  const actions = document.createElement("div");
+  actions.className = "file-actions result-actions";
+  [
+    ["View LaTeX", `${baseUrl}/latex`, true],
+    ["Download LaTeX", `${baseUrl}/latex?download=true`, false],
+    ["View PDF", `${baseUrl}/pdf`, true],
+    ["Download PDF", `${baseUrl}/pdf?download=true`, false],
+  ].forEach(([linkLabel, href, newTab]) => {
+    const link = document.createElement("a");
+    link.href = href;
+    link.textContent = linkLabel;
+    if (newTab) link.target = "_blank";
+    if (linkLabel.includes("PDF") && !pdfSupported) {
+      link.classList.add("unavailable");
+      link.title = "Install a LaTeX engine to enable PDF export.";
+    }
+    actions.append(link);
+  });
+  group.append(fileLabel, actions);
+  statusPanel.append(group);
+}
+
+function addRetryControls(sourceJobId, withCoverLetter) {
+  const panel = document.createElement("div");
+  panel.className = "retry-panel";
+  const heading = document.createElement("strong");
+  heading.textContent = "Try another revision";
+  const help = document.createElement("span");
+  help.textContent = "Choose one or more changes for the next version.";
+  const choices = document.createElement("div");
+  choices.className = "revision-options";
+
+  revisionReasons.forEach(([value, label]) => {
+    const choice = document.createElement("label");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = value;
+    const text = document.createElement("span");
+    text.textContent = label;
+    choice.append(input, text);
+    choices.append(choice);
+  });
+
+  const retryMessage = document.createElement("span");
+  retryMessage.className = "retry-message";
+  retryMessage.hidden = true;
+  const retryButton = document.createElement("button");
+  retryButton.type = "button";
+  retryButton.className = "retry-button";
+  retryButton.textContent = "Generate revised version";
+  retryButton.addEventListener("click", async () => {
+    const selected = Array.from(
+      choices.querySelectorAll("input:checked"),
+      (input) => input.value,
+    );
+    if (!selected.length) {
+      retryMessage.hidden = false;
+      retryMessage.textContent = "Select at least one revision reason.";
+      return;
+    }
+
+    retryButton.disabled = true;
+    retryMessage.hidden = true;
+    try {
+      const response = await fetch(`/resumes/tailor/jobs/${sourceJobId}/retry`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ revision_reasons: selected }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.detail || "The revised version could not be started.");
+      }
+      await monitorGeneration(result.job_id, withCoverLetter);
+    } catch (error) {
+      retryButton.disabled = false;
+      retryMessage.hidden = false;
+      retryMessage.textContent = error.message;
+    }
+  });
+
+  panel.append(heading, help, choices, retryMessage, retryButton);
+  statusPanel.append(panel);
+}
+
+function renderCompletedGeneration(job, sourceJobId, withCoverLetter) {
+  const generatedResume = job.result;
+  statusPanel.className = "status success";
+  statusPanel.replaceChildren();
+  const heading = document.createElement("strong");
+  heading.textContent = `Completed in ${job.elapsed} ${job.elapsed === 1 ? "second" : "seconds"}.`;
+  const detail = document.createElement("span");
+  detail.textContent = `${generatedResume.job_title} at ${generatedResume.company} is ready.`;
+  statusPanel.append(heading, detail);
+  addResultFile(
+    "Tailored resume",
+    `/resumes/generated/${encodeURIComponent(generatedResume.filename)}`,
+  );
+  if (generatedResume.cover_letter_filename) {
+    addResultFile(
+      "Cover letter",
+      `/cover-letters/generated/${encodeURIComponent(generatedResume.cover_letter_filename)}`,
+    );
+  }
+  addRetryControls(sourceJobId, withCoverLetter);
+}
+
+function renderFailedGeneration(message, sourceJobId, withCoverLetter) {
+  statusPanel.className = "status error";
+  statusPanel.replaceChildren();
+  const errorMessage = document.createElement("span");
+  errorMessage.textContent = message;
+  statusPanel.append(errorMessage);
+  addRetryControls(sourceJobId, withCoverLetter);
+}
+
+async function monitorGeneration(jobId, withCoverLetter) {
   statusPanel.hidden = false;
   statusPanel.className = "status loading";
   const startedAt = Date.now();
@@ -261,6 +386,29 @@ form.addEventListener("submit", async (event) => {
   }, 1000);
 
   try {
+    const job = await waitForGeneration(
+      jobId,
+      startedAt,
+      withCoverLetter,
+      (stage) => { currentStage = stage; },
+    );
+    renderCompletedGeneration(job, jobId, withCoverLetter);
+  } catch (error) {
+    renderFailedGeneration(error.message, jobId, withCoverLetter);
+  } finally {
+    window.clearInterval(timer);
+  }
+}
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const withCoverLetter = includeCoverLetter.checked && coverLetterReady;
+  generateButton.disabled = true;
+  generateButton.textContent = withCoverLetter
+    ? "Preparing application..."
+    : "Tailoring resume...";
+
+  try {
     const response = await fetch("/resumes/tailor/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -269,70 +417,16 @@ form.addEventListener("submit", async (event) => {
         include_cover_letter: withCoverLetter,
       }),
     });
-
     const result = await response.json();
     if (!response.ok) {
       throw new Error(result.detail || "The resume could not be generated. Please try again.");
     }
-    const job = await waitForGeneration(
-      result.job_id,
-      startedAt,
-      withCoverLetter,
-      (stage) => { currentStage = stage; },
-    );
-    currentStage = job.stage;
-    const generatedResume = job.result;
-    statusPanel.className = "status success";
-    statusPanel.replaceChildren();
-
-    const heading = document.createElement("strong");
-    heading.textContent = `Completed in ${job.elapsed} ${job.elapsed === 1 ? "second" : "seconds"}.`;
-    const detail = document.createElement("span");
-    detail.textContent = `${generatedResume.job_title} at ${generatedResume.company} is ready.`;
-    statusPanel.append(heading, detail);
-
-    function addResultFile(label, baseUrl) {
-      const group = document.createElement("div");
-      group.className = "result-file";
-      const fileLabel = document.createElement("span");
-      fileLabel.textContent = label;
-      const actions = document.createElement("div");
-      actions.className = "file-actions result-actions";
-      [
-        ["View LaTeX", `${baseUrl}/latex`, true],
-        ["Download LaTeX", `${baseUrl}/latex?download=true`, false],
-        ["View PDF", `${baseUrl}/pdf`, true],
-        ["Download PDF", `${baseUrl}/pdf?download=true`, false],
-      ].forEach(([linkLabel, href, newTab]) => {
-        const link = document.createElement("a");
-        link.href = href;
-        link.textContent = linkLabel;
-        if (newTab) link.target = "_blank";
-        if (linkLabel.includes("PDF") && !pdfSupported) {
-          link.classList.add("unavailable");
-          link.title = "Install a LaTeX engine to enable PDF export.";
-        }
-        actions.append(link);
-      });
-      group.append(fileLabel, actions);
-      statusPanel.append(group);
-    }
-
-    addResultFile(
-      "Tailored resume",
-      `/resumes/generated/${encodeURIComponent(generatedResume.filename)}`,
-    );
-    if (generatedResume.cover_letter_filename) {
-      addResultFile(
-        "Cover letter",
-        `/cover-letters/generated/${encodeURIComponent(generatedResume.cover_letter_filename)}`,
-      );
-    }
+    await monitorGeneration(result.job_id, withCoverLetter);
   } catch (error) {
+    statusPanel.hidden = false;
     statusPanel.className = "status error";
     statusPanel.textContent = error.message;
   } finally {
-    window.clearInterval(timer);
     generateButton.disabled = false;
     updateGenerateButtonLabel();
   }

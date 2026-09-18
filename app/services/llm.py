@@ -67,11 +67,13 @@ def generate_tailored_resume(
     job_description: str,
     master_resume: str,
     validation_feedback: str | None = None,
+    revision_feedback: str | None = None,
 ) -> TailoredResume:
     prompt = build_resume_tailoring_prompt(
         job_description,
         master_resume,
         validation_feedback=validation_feedback,
+        revision_feedback=revision_feedback,
     )
 
     return parse(prompt=prompt, response_model=TailoredResume)
@@ -151,7 +153,19 @@ def build_resume_tailoring_prompt(
     job_description: str,
     master_resume: str,
     validation_feedback: str | None = None,
+    revision_feedback: str | None = None,
 ) -> str:
+    user_revision_section = ""
+    if revision_feedback:
+        user_revision_section = f"""
+
+USER-SELECTED REVISION GOALS:
+Apply these preferences only where they are supported by the master CV and do
+not conflict with the factual-grounding rules:
+
+{revision_feedback}
+"""
+
     revision_section = ""
     if validation_feedback:
         revision_section = f"""
@@ -233,6 +247,7 @@ JOB DESCRIPTION:
 
 MASTER CV:
 {master_resume}
+{user_revision_section}
 {revision_section}
 """
 
@@ -242,7 +257,19 @@ def generate_tailored_cover_letter(
     company: str,
     job_title: str,
     master_resume: str,
+    revision_feedback: str | None = None,
 ) -> TailoredCoverLetter:
+    revision_section = ""
+    if revision_feedback:
+        revision_section = f"""
+
+USER-SELECTED REVISION GOALS:
+Apply relevant goals to the cover letter only where supported by the master
+resume. Resume-section-specific goals can be ignored.
+
+{revision_feedback}
+"""
+
     prompt = f"""
 You are an expert technical cover letter writer.
 
@@ -273,6 +300,7 @@ JOB DESCRIPTION:
 
 MASTER RESUME:
 {master_resume}
+{revision_section}
 """
 
     return parse(prompt=prompt, response_model=TailoredCoverLetter)

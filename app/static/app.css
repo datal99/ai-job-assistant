@@ -378,6 +378,56 @@ button:disabled {
   font-weight: 800;
 }
 
+.retry-panel {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid currentColor;
+}
+
+.retry-panel > span {
+  font-size: 0.86rem;
+}
+
+.revision-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.revision-options label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(35, 100, 62, 0.25);
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.status.error .revision-options label {
+  border-color: rgba(121, 45, 45, 0.25);
+}
+
+.revision-options input {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+  accent-color: #23643e;
+}
+
+.retry-message {
+  color: #792d2d;
+  font-weight: 700;
+}
+
+.retry-button {
+  justify-self: start;
+  margin-top: 0.2rem;
+}
+
 .text-link {
   display: inline-block;
   margin-top: 1.5rem;
@@ -405,5 +455,9 @@ button:disabled {
 
   button {
     width: 100%;
+  }
+
+  .revision-options {
+    grid-template-columns: 1fr;
   }
 }

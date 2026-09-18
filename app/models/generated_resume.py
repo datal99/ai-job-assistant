@@ -41,9 +41,23 @@ GenerationStage = Literal[
 
 GenerationStatus = Literal["queued", "running", "completed", "failed"]
 
+RevisionReason = Literal[
+    "summary_focus",
+    "emphasize_programming",
+    "project_selection",
+    "reduce_keyword_density",
+    "preserve_source_detail",
+    "strengthen_ai_relevance",
+    "cover_letter_specificity",
+]
+
 
 class GenerationJobCreated(BaseModel):
     job_id: str
+
+
+class RetryGenerationRequest(BaseModel):
+    revision_reasons: list[RevisionReason] = Field(min_length=1, max_length=7)
 
 
 class GenerationJobStatus(BaseModel):

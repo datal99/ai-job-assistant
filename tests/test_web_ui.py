@@ -93,6 +93,88 @@ class WebUiTests(unittest.TestCase):
         self.assertEqual(status.json()["stage"], "complete")
         self.assertEqual(status.json()["result"]["filename"], "example.tex")
 
+    @patch(
+        "app.services.generation_job_service.generate_resume_from_job_posting"
+    )
+    def test_completed_generation_can_be_retried_with_multiple_reasons(
+        self,
+        generate,
+    ):
+        generate.return_value = (
+            JobPosting(
+                company="Example Labs",
+                title="Software Engineer",
+                description="Build Python services.",
+            ),
+            Path("resumes/generated/example.tex"),
+        )
+        created = self.client.post(
+            "/resumes/tailor/jobs",
+            json={
+                "job_posting": (
+                    "Example Labs needs a Python engineer to build reliable APIs."
+                )
+            },
+        )
+
+        retried = self.client.post(
+            f"/resumes/tailor/jobs/{created.json()['job_id']}/retry",
+            json={
+                "revision_reasons": ["summary_focus", "project_selection"]
+            },
+        )
+        status = self.client.get(
+            f"/resumes/tailor/jobs/{retried.json()['job_id']}"
+        )
+
+        self.assertEqual(retried.status_code, 200)
+        self.assertEqual(status.json()["status"], "completed")
+        feedback = generate.call_args.kwargs["revision_feedback"]
+        self.assertIn("professional summary", feedback)
+        self.assertIn("project selection", feedback)
+
+    @patch(
+        "app.services.generation_job_service.generate_resume_from_job_posting"
+    )
+    def test_failed_generation_can_be_retried(self, generate):
+        generate.side_effect = ResumeGroundingError("Needs revision.")
+        created = self.client.post(
+            "/resumes/tailor/jobs",
+            json={
+                "job_posting": (
+                    "Example Labs needs a Python engineer to build reliable APIs."
+                )
+            },
+        )
+        generate.side_effect = None
+        generate.return_value = (
+            JobPosting(
+                company="Example Labs",
+                title="Software Engineer",
+                description="Build Python services.",
+            ),
+            Path("resumes/generated/revised.tex"),
+        )
+
+        retried = self.client.post(
+            f"/resumes/tailor/jobs/{created.json()['job_id']}/retry",
+            json={"revision_reasons": ["preserve_source_detail"]},
+        )
+        status = self.client.get(
+            f"/resumes/tailor/jobs/{retried.json()['job_id']}"
+        )
+
+        self.assertEqual(retried.status_code, 200)
+        self.assertEqual(status.json()["status"], "completed")
+
+    def test_retry_requires_at_least_one_revision_reason(self):
+        response = self.client.post(
+            "/resumes/tailor/jobs/missing/retry",
+            json={"revision_reasons": []},
+        )
+
+        self.assertEqual(response.status_code, 422)
+
     @patch("app.main.generate_resume_from_job_posting")
     def test_generation_connection_error_has_helpful_response(self, generate):
         generate.side_effect = APIConnectionError(

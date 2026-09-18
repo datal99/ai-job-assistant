@@ -11,6 +11,7 @@ from app.services.llm import (
     MODEL,
     analyze_job,
     build_resume_tailoring_prompt,
+    generate_tailored_cover_letter,
     generate_tailored_resume,
     parse,
     StructuredOutputError,
@@ -73,6 +74,31 @@ class ResumeTailoringPromptTests(unittest.TestCase):
         self.assertIn("REVISION REQUIRED", prompt)
         self.assertIn("Summary omitted supported AI project work.", prompt)
         self.assertIn("Do not copy claims from", prompt)
+
+    def test_manual_revision_goals_are_grounded(self):
+        prompt = build_resume_tailoring_prompt(
+            "AI enablement role",
+            "master resume",
+            revision_feedback="- Make supported AI work more visible.",
+        )
+
+        self.assertIn("USER-SELECTED REVISION GOALS", prompt)
+        self.assertIn("Make supported AI work more visible.", prompt)
+        self.assertIn("factual-grounding rules", prompt)
+
+    @patch("app.services.llm.parse")
+    def test_cover_letter_receives_manual_revision_goals(self, parse):
+        generate_tailored_cover_letter(
+            "job description",
+            "Example Labs",
+            "Engineer",
+            "master resume",
+            revision_feedback="- Make the cover letter more specific.",
+        )
+
+        prompt = parse.call_args.kwargs["prompt"]
+        self.assertIn("USER-SELECTED REVISION GOALS", prompt)
+        self.assertIn("Make the cover letter more specific.", prompt)
 
 
 class ModelConfigurationTests(unittest.TestCase):

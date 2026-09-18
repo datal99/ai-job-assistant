@@ -15,6 +15,7 @@ from app.models.generated_resume import (
     GenerationJobStatus,
     MasterResumeStatus,
     MasterResumeUploadRequest,
+    RetryGenerationRequest,
 )
 from app.services.generation_job_service import generation_jobs
 from app.services.cover_letter_service import (
@@ -163,7 +164,10 @@ def start_resume_generation(
     request: GenerateResumeRequest,
     background_tasks: BackgroundTasks,
 ):
-    job_id = generation_jobs.create()
+    job_id = generation_jobs.create(
+        raw_job_posting=request.job_posting,
+        include_cover_letter=request.include_cover_letter,
+    )
     background_tasks.add_task(
         generation_jobs.run,
         job_id,
@@ -171,6 +175,45 @@ def start_resume_generation(
         request.include_cover_letter,
     )
     return GenerationJobCreated(job_id=job_id)
+
+
+@app.post(
+    "/resumes/tailor/jobs/{job_id}/retry",
+    response_model=GenerationJobCreated,
+)
+def retry_resume_generation(
+    job_id: str,
+    request: RetryGenerationRequest,
+    background_tasks: BackgroundTasks,
+):
+    source_status = generation_jobs.get(job_id)
+    if not source_status:
+        raise HTTPException(status_code=404, detail="Generation job not found.")
+    if source_status.status not in ("completed", "failed"):
+        raise HTTPException(
+            status_code=409,
+            detail="Wait for the current generation to finish before retrying.",
+        )
+
+    retry_inputs = generation_jobs.retry_inputs(job_id)
+    if not retry_inputs:
+        raise HTTPException(
+            status_code=409,
+            detail="This generation cannot be retried.",
+        )
+    raw_job_posting, include_cover_letter = retry_inputs
+    retry_job_id = generation_jobs.create(
+        raw_job_posting=raw_job_posting,
+        include_cover_letter=include_cover_letter,
+    )
+    background_tasks.add_task(
+        generation_jobs.run,
+        retry_job_id,
+        raw_job_posting,
+        include_cover_letter,
+        request.revision_reasons,
+    )
+    return GenerationJobCreated(job_id=retry_job_id)
 
 
 @app.get(
