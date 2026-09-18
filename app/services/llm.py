@@ -66,8 +66,13 @@ def analyze_job(prompt: str) -> JobAnalysisResponse:
 def generate_tailored_resume(
     job_description: str,
     master_resume: str,
+    validation_feedback: str | None = None,
 ) -> TailoredResume:
-    prompt = build_resume_tailoring_prompt(job_description, master_resume)
+    prompt = build_resume_tailoring_prompt(
+        job_description,
+        master_resume,
+        validation_feedback=validation_feedback,
+    )
 
     return parse(prompt=prompt, response_model=TailoredResume)
 
@@ -145,7 +150,20 @@ Validation rules:
 def build_resume_tailoring_prompt(
     job_description: str,
     master_resume: str,
+    validation_feedback: str | None = None,
 ) -> str:
+    revision_section = ""
+    if validation_feedback:
+        revision_section = f"""
+
+REVISION REQUIRED:
+The previous draft failed factual or relevance validation. Correct every issue
+below while continuing to follow all grounding rules. Do not copy claims from
+the feedback unless they are supported by the master CV.
+
+{validation_feedback}
+"""
+
     return f"""
 You are an expert technical resume writer.
 
@@ -195,7 +213,10 @@ Important rules:
 - Avoid slash-separated tool clusters such as "Git/GitLab CI/CD" and avoid
   sentences whose main purpose is listing tools. Distinguish version control
   from pipeline automation instead of merging them into one label.
-- Mention AI or LLM work only when the job description makes it relevant.
+- When the job posting explicitly requires AI, ML, GenAI, LLM, or agent
+  enablement and the master CV supports it, the summary must explicitly mention
+  the strongest supported AI-related experience or project work. Otherwise,
+  mention AI or LLM work only when the job description makes it relevant.
 - Reorder, shorten, or faithfully rephrase experience bullets to emphasize
   relevant responsibilities and technologies without changing their factual
   meaning. Do not combine separate facts in a way that creates a new claim.
@@ -212,6 +233,7 @@ JOB DESCRIPTION:
 
 MASTER CV:
 {master_resume}
+{revision_section}
 """
 
 

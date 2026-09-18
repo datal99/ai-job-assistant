@@ -151,11 +151,62 @@ class GenerateResumeFromJobPostingTests(unittest.TestCase):
         with self.assertRaises(ResumeGroundingError):
             generate_resume_from_job_posting("raw posting")
 
-        validate_resume.assert_called_once_with(
-            self.tailored,
-            self.job.description,
+        self.assertEqual(validate_resume.call_count, 2)
+        self.assertEqual(tailor_resume.call_count, 2)
+        self.assertEqual(
+            tailor_resume.call_args_list[1].kwargs,
+            {
+                "validation_feedback": "Unsupported experience claim.",
+            },
         )
         save_generated_resume.assert_not_called()
+
+    @patch("app.services.resume_service.save_generated_resume")
+    @patch("app.services.resume_service.render_resume")
+    @patch("app.services.resume_service.load_resume_template")
+    @patch("app.services.resume_service.extract_master_resume_data")
+    @patch("app.services.resume_service.validate_tailored_resume")
+    @patch("app.services.resume_service.tailor_resume")
+    @patch("app.services.resume_service.extract_job_posting")
+    def test_failed_validation_is_revised_once_and_then_saved(
+        self,
+        extract_job_posting,
+        tailor_resume,
+        validate_resume,
+        extract_master_resume_data,
+        load_resume_template,
+        render_resume,
+        save_generated_resume,
+    ):
+        corrected = self.tailored.model_copy(
+            update={"summary": "Python engineer with supported AI project work."}
+        )
+        extract_job_posting.return_value = self.job
+        tailor_resume.side_effect = [self.tailored, corrected]
+        validate_resume.side_effect = [
+            ResumeGroundingError("Summary omitted supported AI experience."),
+            None,
+        ]
+        extract_master_resume_data.return_value = self.master
+        load_resume_template.return_value = "template"
+        render_resume.return_value = "rendered corrected latex"
+        save_generated_resume.return_value = Path("resumes/generated/output.tex")
+
+        generate_resume_from_job_posting("raw posting")
+
+        self.assertEqual(tailor_resume.call_count, 2)
+        tailor_resume.assert_any_call(self.job.description)
+        tailor_resume.assert_any_call(
+            self.job.description,
+            validation_feedback="Summary omitted supported AI experience.",
+        )
+        self.assertEqual(validate_resume.call_count, 2)
+        render_resume.assert_called_once_with(
+            template="template",
+            master_resume_data=self.master,
+            tailored_resume=corrected,
+        )
+        save_generated_resume.assert_called_once()
 
     @patch("app.services.resume_service.validate_tailored_resume_content")
     @patch("app.services.resume_service.load_master_resume")

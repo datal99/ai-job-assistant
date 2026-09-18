@@ -37,6 +37,7 @@ class ResumeTailoringPromptTests(unittest.TestCase):
         self.assertIn("DevOps, platform, build/release", prompt)
         self.assertIn('Avoid slash-separated tool clusters such as "Git/GitLab CI/CD"', prompt)
         self.assertIn("only when the job description makes it relevant", prompt)
+        self.assertIn("the summary must explicitly mention", prompt)
         self.assertIn("Preserve the primary nature of every employment role", prompt)
         self.assertIn("include all projects from the master CV", prompt)
         self.assertIn("Build reliable payment services.", prompt)
@@ -55,6 +56,23 @@ class ResumeTailoringPromptTests(unittest.TestCase):
         self.assertIn("exactly three concise resume-style statements", prompt)
         self.assertIn("JOB DESCRIPTION:\njob description", prompt)
         self.assertIn("MASTER CV:\nmaster resume", prompt)
+
+    @patch("app.services.llm.parse")
+    def test_resume_revision_includes_validation_feedback(self, parse):
+        expected = TailoredResume.model_construct()
+        parse.return_value = expected
+
+        result = generate_tailored_resume(
+            "AI enablement role",
+            "master resume",
+            validation_feedback="Summary omitted supported AI project work.",
+        )
+
+        self.assertIs(result, expected)
+        prompt = parse.call_args.kwargs["prompt"]
+        self.assertIn("REVISION REQUIRED", prompt)
+        self.assertIn("Summary omitted supported AI project work.", prompt)
+        self.assertIn("Do not copy claims from", prompt)
 
 
 class ModelConfigurationTests(unittest.TestCase):
