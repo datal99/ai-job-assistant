@@ -258,6 +258,22 @@ textarea:focus {
   font-size: 0.82rem;
 }
 
+.form-actions {
+  display: flex;
+  gap: 0.65rem;
+}
+
+#retry-button {
+  border: 1px solid #23643e;
+  color: #23643e;
+  background: transparent;
+}
+
+#retry-button:hover {
+  color: #fff;
+  background: #174a2d;
+}
+
 button,
 .status > a {
   border: 0;
@@ -378,6 +394,8 @@ button:disabled {
   font-weight: 800;
 }
 
+}
+
 .text-link {
   display: inline-block;
   margin-top: 1.5rem;
@@ -406,4 +424,9 @@ button:disabled {
   button {
     width: 100%;
   }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
 }

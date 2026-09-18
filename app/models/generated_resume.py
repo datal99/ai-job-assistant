@@ -41,7 +41,6 @@ GenerationStage = Literal[
 
 GenerationStatus = Literal["queued", "running", "completed", "failed"]
 
-
 class GenerationJobCreated(BaseModel):
     job_id: str
 

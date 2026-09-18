@@ -2,6 +2,7 @@ const form = document.querySelector("#resume-form");
 const jobPosting = document.querySelector("#job-posting");
 const characterCount = document.querySelector("#character-count");
 const generateButton = document.querySelector("#generate-button");
+const retryButton = document.querySelector("#retry-button");
 const statusPanel = document.querySelector("#status");
 const masterStatus = document.querySelector("#master-status");
 const masterFileActions = document.querySelector("#master-file-actions");
@@ -17,6 +18,8 @@ const includeCoverLetter = document.querySelector("#include-cover-letter");
 const coverLetterOptionNote = document.querySelector("#cover-letter-option-note");
 let pdfSupported = false;
 let coverLetterReady = false;
+let lastJobId = null;
+let lastJobIncludedCoverLetter = false;
 
 function updateGenerateButtonLabel() {
   generateButton.textContent = includeCoverLetter.checked
@@ -240,13 +243,63 @@ async function waitForGeneration(
   }
 }
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const withCoverLetter = includeCoverLetter.checked && coverLetterReady;
-  generateButton.disabled = true;
-  generateButton.textContent = withCoverLetter
-    ? "Preparing application..."
-    : "Tailoring resume...";
+function addResultFile(label, baseUrl) {
+  const group = document.createElement("div");
+  group.className = "result-file";
+  const fileLabel = document.createElement("span");
+  fileLabel.textContent = label;
+  const actions = document.createElement("div");
+  actions.className = "file-actions result-actions";
+  [
+    ["View LaTeX", `${baseUrl}/latex`, true],
+    ["Download LaTeX", `${baseUrl}/latex?download=true`, false],
+    ["View PDF", `${baseUrl}/pdf`, true],
+    ["Download PDF", `${baseUrl}/pdf?download=true`, false],
+  ].forEach(([linkLabel, href, newTab]) => {
+    const link = document.createElement("a");
+    link.href = href;
+    link.textContent = linkLabel;
+    if (newTab) link.target = "_blank";
+    if (linkLabel.includes("PDF") && !pdfSupported) {
+      link.classList.add("unavailable");
+      link.title = "Install a LaTeX engine to enable PDF export.";
+    }
+    actions.append(link);
+  });
+  group.append(fileLabel, actions);
+  statusPanel.append(group);
+}
+
+function renderCompletedGeneration(job) {
+  const generatedResume = job.result;
+  statusPanel.className = "status success";
+  statusPanel.replaceChildren();
+  const heading = document.createElement("strong");
+  heading.textContent = `Completed in ${job.elapsed} ${job.elapsed === 1 ? "second" : "seconds"}.`;
+  const detail = document.createElement("span");
+  detail.textContent = `${generatedResume.job_title} at ${generatedResume.company} is ready.`;
+  statusPanel.append(heading, detail);
+  addResultFile(
+    "Tailored resume",
+    `/resumes/generated/${encodeURIComponent(generatedResume.filename)}`,
+  );
+  if (generatedResume.cover_letter_filename) {
+    addResultFile(
+      "Cover letter",
+      `/cover-letters/generated/${encodeURIComponent(generatedResume.cover_letter_filename)}`,
+    );
+  }
+}
+
+function renderFailedGeneration(message) {
+  statusPanel.className = "status error";
+  statusPanel.replaceChildren();
+  const errorMessage = document.createElement("span");
+  errorMessage.textContent = message;
+  statusPanel.append(errorMessage);
+}
+
+async function monitorGeneration(jobId, withCoverLetter) {
   statusPanel.hidden = false;
   statusPanel.className = "status loading";
   const startedAt = Date.now();
@@ -261,6 +314,60 @@ form.addEventListener("submit", async (event) => {
   }, 1000);
 
   try {
+    const job = await waitForGeneration(
+      jobId,
+      startedAt,
+      withCoverLetter,
+      (stage) => { currentStage = stage; },
+    );
+    renderCompletedGeneration(job);
+  } catch (error) {
+    renderFailedGeneration(error.message);
+  } finally {
+    window.clearInterval(timer);
+    lastJobId = jobId;
+    lastJobIncludedCoverLetter = withCoverLetter;
+    retryButton.hidden = false;
+    retryButton.disabled = false;
+  }
+}
+
+retryButton.addEventListener("click", async () => {
+  if (!lastJobId) return;
+  retryButton.disabled = true;
+  retryButton.textContent = "Retrying...";
+  generateButton.disabled = true;
+  try {
+    const response = await fetch(`/resumes/tailor/jobs/${lastJobId}/retry`, {
+      method: "POST",
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.detail || "The retry could not be started.");
+    }
+    await monitorGeneration(result.job_id, lastJobIncludedCoverLetter);
+  } catch (error) {
+    statusPanel.hidden = false;
+    statusPanel.className = "status error";
+    statusPanel.textContent = error.message;
+  } finally {
+    retryButton.disabled = false;
+    retryButton.textContent = "Retry";
+    generateButton.disabled = false;
+    updateGenerateButtonLabel();
+  }
+});
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const withCoverLetter = includeCoverLetter.checked && coverLetterReady;
+  generateButton.disabled = true;
+  retryButton.hidden = true;
+  generateButton.textContent = withCoverLetter
+    ? "Preparing application..."
+    : "Tailoring resume...";
+
+  try {
     const response = await fetch("/resumes/tailor/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -269,70 +376,16 @@ form.addEventListener("submit", async (event) => {
         include_cover_letter: withCoverLetter,
       }),
     });
-
     const result = await response.json();
     if (!response.ok) {
       throw new Error(result.detail || "The resume could not be generated. Please try again.");
     }
-    const job = await waitForGeneration(
-      result.job_id,
-      startedAt,
-      withCoverLetter,
-      (stage) => { currentStage = stage; },
-    );
-    currentStage = job.stage;
-    const generatedResume = job.result;
-    statusPanel.className = "status success";
-    statusPanel.replaceChildren();
-
-    const heading = document.createElement("strong");
-    heading.textContent = `Completed in ${job.elapsed} ${job.elapsed === 1 ? "second" : "seconds"}.`;
-    const detail = document.createElement("span");
-    detail.textContent = `${generatedResume.job_title} at ${generatedResume.company} is ready.`;
-    statusPanel.append(heading, detail);
-
-    function addResultFile(label, baseUrl) {
-      const group = document.createElement("div");
-      group.className = "result-file";
-      const fileLabel = document.createElement("span");
-      fileLabel.textContent = label;
-      const actions = document.createElement("div");
-      actions.className = "file-actions result-actions";
-      [
-        ["View LaTeX", `${baseUrl}/latex`, true],
-        ["Download LaTeX", `${baseUrl}/latex?download=true`, false],
-        ["View PDF", `${baseUrl}/pdf`, true],
-        ["Download PDF", `${baseUrl}/pdf?download=true`, false],
-      ].forEach(([linkLabel, href, newTab]) => {
-        const link = document.createElement("a");
-        link.href = href;
-        link.textContent = linkLabel;
-        if (newTab) link.target = "_blank";
-        if (linkLabel.includes("PDF") && !pdfSupported) {
-          link.classList.add("unavailable");
-          link.title = "Install a LaTeX engine to enable PDF export.";
-        }
-        actions.append(link);
-      });
-      group.append(fileLabel, actions);
-      statusPanel.append(group);
-    }
-
-    addResultFile(
-      "Tailored resume",
-      `/resumes/generated/${encodeURIComponent(generatedResume.filename)}`,
-    );
-    if (generatedResume.cover_letter_filename) {
-      addResultFile(
-        "Cover letter",
-        `/cover-letters/generated/${encodeURIComponent(generatedResume.cover_letter_filename)}`,
-      );
-    }
+    await monitorGeneration(result.job_id, withCoverLetter);
   } catch (error) {
+    statusPanel.hidden = false;
     statusPanel.className = "status error";
     statusPanel.textContent = error.message;
   } finally {
-    window.clearInterval(timer);
     generateButton.disabled = false;
     updateGenerateButtonLabel();
   }

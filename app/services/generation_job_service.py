@@ -35,6 +35,8 @@ class GenerationJob:
     stage: GenerationStage = "queued"
     result: GeneratedResumeResponse | None = None
     error: str | None = None
+    raw_job_posting: str = ""
+    include_cover_letter: bool = False
 
 
 class GenerationJobManager:
@@ -46,7 +48,11 @@ class GenerationJobManager:
         self._lock = Lock()
         self._max_jobs = max_jobs
 
-    def create(self) -> str:
+    def create(
+        self,
+        raw_job_posting: str = "",
+        include_cover_letter: bool = False,
+    ) -> str:
         job_id = uuid4().hex
         with self._lock:
             while len(self._jobs) >= self._max_jobs:
@@ -55,8 +61,17 @@ class GenerationJobManager:
             self._jobs[job_id] = GenerationJob(
                 job_id=job_id,
                 started_at=datetime.now(timezone.utc),
+                raw_job_posting=raw_job_posting,
+                include_cover_letter=include_cover_letter,
             )
         return job_id
+
+    def retry_inputs(self, job_id: str) -> tuple[str, bool] | None:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if not job or job.status not in ("completed", "failed"):
+                return None
+            return job.raw_job_posting, job.include_cover_letter
 
     def update_stage(self, job_id: str, stage: GenerationStage) -> None:
         with self._lock:

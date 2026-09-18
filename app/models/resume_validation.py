@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class ResumeValidationIssue(BaseModel):
-    section: Literal["experience", "projects"] = Field(
+    section: Literal["summary", "experience", "projects"] = Field(
         description="Resume section containing the unsupported claim or omission."
     )
     item: str = Field(

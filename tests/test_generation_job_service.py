@@ -59,6 +59,23 @@ class GenerationJobManagerTests(unittest.TestCase):
     def test_unknown_job_returns_none(self):
         self.assertIsNone(GenerationJobManager().get("missing"))
 
+    def test_failed_job_retains_inputs_for_manual_retry(self):
+        manager = GenerationJobManager()
+        job_id = manager.create("original posting", include_cover_letter=True)
+        manager.fail(job_id, "Try again.")
+
+        self.assertEqual(
+            manager.retry_inputs(job_id),
+            ("original posting", True),
+        )
+
+    def test_running_job_cannot_be_retried(self):
+        manager = GenerationJobManager()
+        job_id = manager.create("original posting")
+        manager.update_stage(job_id, "tailoring_resume")
+
+        self.assertIsNone(manager.retry_inputs(job_id))
+
     def test_job_history_is_bounded(self):
         manager = GenerationJobManager(max_jobs=2)
         first_job = manager.create()
@@ -176,7 +193,6 @@ class GenerationJobManagerTests(unittest.TestCase):
             manager.get(job_id).error,
             "Upload a compatible master cover letter before generating one.",
         )
-
 
 if __name__ == "__main__":
     unittest.main()

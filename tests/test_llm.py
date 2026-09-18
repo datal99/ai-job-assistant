@@ -32,7 +32,12 @@ class ResumeTailoringPromptTests(unittest.TestCase):
         self.assertIn('"builds", "brings", "contributes", or "delivers"', prompt)
         self.assertIn('resume construction such as "Strong background in..."', prompt)
         self.assertNotIn("sentence fragments, first-person language", prompt)
+        self.assertIn("two to four core technical areas", prompt)
+        self.assertIn("job posting makes them central responsibilities", prompt)
+        self.assertIn("DevOps, platform, build/release", prompt)
+        self.assertIn('Avoid slash-separated tool clusters such as "Git/GitLab CI/CD"', prompt)
         self.assertIn("only when the job description makes it relevant", prompt)
+        self.assertIn("the summary must explicitly mention", prompt)
         self.assertIn("Preserve the primary nature of every employment role", prompt)
         self.assertIn("include all projects from the master CV", prompt)
         self.assertIn("Build reliable payment services.", prompt)
@@ -52,6 +57,22 @@ class ResumeTailoringPromptTests(unittest.TestCase):
         self.assertIn("JOB DESCRIPTION:\njob description", prompt)
         self.assertIn("MASTER CV:\nmaster resume", prompt)
 
+    @patch("app.services.llm.parse")
+    def test_resume_revision_includes_validation_feedback(self, parse):
+        expected = TailoredResume.model_construct()
+        parse.return_value = expected
+
+        result = generate_tailored_resume(
+            "AI enablement role",
+            "master resume",
+            validation_feedback="Summary omitted supported AI project work.",
+        )
+
+        self.assertIs(result, expected)
+        prompt = parse.call_args.kwargs["prompt"]
+        self.assertIn("REVISION REQUIRED", prompt)
+        self.assertIn("Summary omitted supported AI project work.", prompt)
+        self.assertIn("Do not copy claims from", prompt)
 
 class ModelConfigurationTests(unittest.TestCase):
     def test_model_is_gpt_5_6_terra(self):
@@ -71,7 +92,11 @@ class ModelConfigurationTests(unittest.TestCase):
 class ResumeExperienceValidationPromptTests(unittest.TestCase):
     @patch("app.services.llm.parse")
     def test_validation_requires_employer_specific_grounding(self, parse):
-        tailored = TailoredResume.model_construct(experience=[], projects=[])
+        tailored = TailoredResume.model_construct(
+            summary="Software Engineer focused on AI systems.",
+            experience=[],
+            projects=[],
+        )
         expected = ResumeValidationResult(is_valid=True, issues=[])
         parse.return_value = expected
 
@@ -88,6 +113,8 @@ class ResumeExperienceValidationPromptTests(unittest.TestCase):
         )
         prompt = parse.call_args.kwargs["prompt"]
         self.assertIn("generated experience and project selections", prompt)
+        self.assertIn("when the posting centers on DevOps", prompt)
+        self.assertIn('merged labels such as "Git/GitLab CI/CD"', prompt)
         self.assertIn("correct employer and position", prompt)
         self.assertIn("does not prove", prompt)
         self.assertIn("Do not accept a plausible inference", prompt)

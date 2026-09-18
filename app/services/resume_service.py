@@ -22,7 +22,7 @@ GENERATED_RESUME_DIR = PROJECT_ROOT / "resumes/generated"
 
 
 class ResumeGroundingError(RuntimeError):
-    """Raised when generated experience contains unsupported claims."""
+    """Raised when generated resume content fails grounding validation."""
 
 
 def load_master_resume() -> str:
@@ -44,13 +44,17 @@ def save_generated_resume(filename: str, content: str) -> Path:
 
     return output_path
 
-def tailor_resume(job_description: str) -> TailoredResume:
+def tailor_resume(
+    job_description: str,
+    validation_feedback: str | None = None,
+) -> TailoredResume:
     """Generate tailored resume content for a job description."""
     master_resume = load_master_resume()
 
     return generate_tailored_resume(
         job_description=job_description,
         master_resume=master_resume,
+        validation_feedback=validation_feedback,
     )
 
 
@@ -74,7 +78,7 @@ def validate_tailored_resume(
     )
     detail = f" Issues: {reasons}" if reasons else ""
     raise ResumeGroundingError(
-        "Generated experience was not saved because it could not be verified "
+        "Generated resume was not saved because it could not be verified "
         f"against the master resume.{detail}"
     )
 
@@ -114,7 +118,14 @@ def generate_resume_from_job_posting(
     tailored_resume = tailor_resume(job_posting.description)
 
     report("validating_resume")
-    validate_tailored_resume(tailored_resume, job_posting.description)
+    try:
+        validate_tailored_resume(tailored_resume, job_posting.description)
+    except ResumeGroundingError as validation_error:
+        tailored_resume = tailor_resume(
+            job_posting.description,
+            validation_feedback=str(validation_error),
+        )
+        validate_tailored_resume(tailored_resume, job_posting.description)
 
     report("rendering_resume")
     master_resume_data = extract_master_resume_data()
