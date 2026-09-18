@@ -47,7 +47,6 @@ def save_generated_resume(filename: str, content: str) -> Path:
 def tailor_resume(
     job_description: str,
     validation_feedback: str | None = None,
-    revision_feedback: str | None = None,
 ) -> TailoredResume:
     """Generate tailored resume content for a job description."""
     master_resume = load_master_resume()
@@ -56,7 +55,6 @@ def tailor_resume(
         job_description=job_description,
         master_resume=master_resume,
         validation_feedback=validation_feedback,
-        revision_feedback=revision_feedback,
     )
 
 
@@ -107,7 +105,6 @@ def build_resume_filename(
 def generate_resume_from_job_posting(
     raw_job_posting: str,
     progress_callback: Callable[[GenerationStage], None] | None = None,
-    revision_feedback: str | None = None,
 ) -> tuple[JobPosting, Path]:
     """Create and save a tailored resume from a raw job posting."""
     def report(stage: GenerationStage) -> None:
@@ -118,22 +115,16 @@ def generate_resume_from_job_posting(
     job_posting = extract_job_posting(raw_job_posting)
 
     report("tailoring_resume")
-    if revision_feedback:
-        tailored_resume = tailor_resume(
-            job_posting.description,
-            revision_feedback=revision_feedback,
-        )
-    else:
-        tailored_resume = tailor_resume(job_posting.description)
+    tailored_resume = tailor_resume(job_posting.description)
 
     report("validating_resume")
     try:
         validate_tailored_resume(tailored_resume, job_posting.description)
     except ResumeGroundingError as validation_error:
-        retry_kwargs = {"validation_feedback": str(validation_error)}
-        if revision_feedback:
-            retry_kwargs["revision_feedback"] = revision_feedback
-        tailored_resume = tailor_resume(job_posting.description, **retry_kwargs)
+        tailored_resume = tailor_resume(
+            job_posting.description,
+            validation_feedback=str(validation_error),
+        )
         validate_tailored_resume(tailored_resume, job_posting.description)
 
     report("rendering_resume")

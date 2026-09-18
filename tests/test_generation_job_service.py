@@ -4,11 +4,7 @@ from unittest.mock import patch
 
 from app.models.job_posting import JobPosting
 from app.services.cover_letter_service import MissingCoverLetterTemplate
-from app.services.generation_job_service import (
-    GenerationJobManager,
-    REVISION_GUIDANCE,
-    build_revision_feedback,
-)
+from app.services.generation_job_service import GenerationJobManager
 from app.services.llm import StructuredOutputError
 from app.services.resume_service import ResumeGroundingError
 
@@ -79,21 +75,6 @@ class GenerationJobManagerTests(unittest.TestCase):
         manager.update_stage(job_id, "tailoring_resume")
 
         self.assertIsNone(manager.retry_inputs(job_id))
-
-    def test_revision_reasons_become_bounded_prompt_guidance(self):
-        feedback = build_revision_feedback(
-            ["summary_focus", "project_selection"]
-        )
-
-        self.assertIn("professional summary", feedback)
-        self.assertIn("project selection", feedback)
-
-    def test_revision_guidance_is_role_agnostic(self):
-        guidance = " ".join(REVISION_GUIDANCE.values()).lower()
-
-        self.assertNotIn("ai,", guidance)
-        self.assertNotIn("llm", guidance)
-        self.assertNotIn("devops", guidance)
 
     def test_job_history_is_bounded(self):
         manager = GenerationJobManager(max_jobs=2)
@@ -212,27 +193,6 @@ class GenerationJobManagerTests(unittest.TestCase):
             manager.get(job_id).error,
             "Upload a compatible master cover letter before generating one.",
         )
-
-    @patch(
-        "app.services.generation_job_service.generate_resume_from_job_posting"
-    )
-    def test_manual_retry_guidance_is_passed_to_resume_generation(self, generate):
-        generate.return_value = (
-            JobPosting(
-                company="Example Labs",
-                title="Software Engineer",
-                description="Build services.",
-            ),
-            Path("resumes/generated/example.tex"),
-        )
-        manager = GenerationJobManager()
-        job_id = manager.create("raw posting")
-
-        manager.run(job_id, "raw posting", revision_reasons=["summary_focus"])
-
-        feedback = generate.call_args.kwargs["revision_feedback"]
-        self.assertIn("professional summary", feedback)
-
 
 if __name__ == "__main__":
     unittest.main()

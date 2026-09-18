@@ -23,16 +23,15 @@ class WebUiTests(unittest.TestCase):
         self.assertIn("Tailor your application to the role", response.text)
         self.assertIn('id="resume-form"', response.text)
         self.assertIn('id="include-cover-letter"', response.text)
+        self.assertIn('id="retry-button"', response.text)
 
-    def test_retry_ui_uses_accessible_accordion_and_multiselect(self):
+    def test_retry_ui_is_a_simple_button_beside_generate(self):
         response = self.client.get("/static/app.js")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('setAttribute("aria-expanded", "false")', response.text)
-        self.assertIn('setAttribute("role", "combobox")', response.text)
-        self.assertIn('setAttribute("role", "listbox")', response.text)
-        self.assertIn('setAttribute("aria-multiselectable", "true")', response.text)
-        self.assertNotIn("Highlight relevant AI work", response.text)
+        self.assertIn('querySelector("#retry-button")', response.text)
+        self.assertNotIn("revisionReasons", response.text)
+        self.assertNotIn("retry-accordion", response.text)
 
     @patch("app.main.generate_resume_from_job_posting")
     def test_generate_endpoint_returns_downloadable_filename(self, generate):
@@ -106,7 +105,7 @@ class WebUiTests(unittest.TestCase):
     @patch(
         "app.services.generation_job_service.generate_resume_from_job_posting"
     )
-    def test_completed_generation_can_be_retried_with_multiple_reasons(
+    def test_completed_generation_can_be_retried(
         self,
         generate,
     ):
@@ -129,9 +128,6 @@ class WebUiTests(unittest.TestCase):
 
         retried = self.client.post(
             f"/resumes/tailor/jobs/{created.json()['job_id']}/retry",
-            json={
-                "revision_reasons": ["summary_focus", "project_selection"]
-            },
         )
         status = self.client.get(
             f"/resumes/tailor/jobs/{retried.json()['job_id']}"
@@ -139,9 +135,6 @@ class WebUiTests(unittest.TestCase):
 
         self.assertEqual(retried.status_code, 200)
         self.assertEqual(status.json()["status"], "completed")
-        feedback = generate.call_args.kwargs["revision_feedback"]
-        self.assertIn("professional summary", feedback)
-        self.assertIn("project selection", feedback)
 
     @patch(
         "app.services.generation_job_service.generate_resume_from_job_posting"
@@ -168,7 +161,6 @@ class WebUiTests(unittest.TestCase):
 
         retried = self.client.post(
             f"/resumes/tailor/jobs/{created.json()['job_id']}/retry",
-            json={"revision_reasons": ["preserve_source_detail"]},
         )
         status = self.client.get(
             f"/resumes/tailor/jobs/{retried.json()['job_id']}"
@@ -177,13 +169,12 @@ class WebUiTests(unittest.TestCase):
         self.assertEqual(retried.status_code, 200)
         self.assertEqual(status.json()["status"], "completed")
 
-    def test_retry_requires_at_least_one_revision_reason(self):
+    def test_retry_unknown_job_returns_not_found(self):
         response = self.client.post(
             "/resumes/tailor/jobs/missing/retry",
-            json={"revision_reasons": []},
         )
 
-        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.status_code, 404)
 
     @patch("app.main.generate_resume_from_job_posting")
     def test_generation_connection_error_has_helpful_response(self, generate):

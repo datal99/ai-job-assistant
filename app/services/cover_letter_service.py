@@ -114,7 +114,6 @@ def generate_cover_letter(
     job_posting: JobPosting,
     template: str | None = None,
     progress_callback: Callable[[GenerationStage], None] | None = None,
-    revision_feedback: str | None = None,
 ) -> Path:
     def report(stage: GenerationStage) -> None:
         if progress_callback:
@@ -124,15 +123,12 @@ def generate_cover_letter(
     master_resume = load_master_resume()
 
     report("tailoring_cover_letter")
-    generation_kwargs = dict(
+    tailored_cover_letter = generate_tailored_cover_letter(
         job_description=job_posting.description,
         company=job_posting.company,
         job_title=job_posting.title,
         master_resume=master_resume,
     )
-    if revision_feedback:
-        generation_kwargs["revision_feedback"] = revision_feedback
-    tailored_cover_letter = generate_tailored_cover_letter(**generation_kwargs)
 
     report("rendering_cover_letter")
     rendered = render_cover_letter(

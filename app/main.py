@@ -15,7 +15,6 @@ from app.models.generated_resume import (
     GenerationJobStatus,
     MasterResumeStatus,
     MasterResumeUploadRequest,
-    RetryGenerationRequest,
 )
 from app.services.generation_job_service import generation_jobs
 from app.services.cover_letter_service import (
@@ -183,7 +182,6 @@ def start_resume_generation(
 )
 def retry_resume_generation(
     job_id: str,
-    request: RetryGenerationRequest,
     background_tasks: BackgroundTasks,
 ):
     source_status = generation_jobs.get(job_id)
@@ -211,7 +209,6 @@ def retry_resume_generation(
         retry_job_id,
         raw_job_posting,
         include_cover_letter,
-        request.revision_reasons,
     )
     return GenerationJobCreated(job_id=retry_job_id)
 

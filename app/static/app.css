@@ -258,6 +258,22 @@ textarea:focus {
   font-size: 0.82rem;
 }
 
+.form-actions {
+  display: flex;
+  gap: 0.65rem;
+}
+
+#retry-button {
+  border: 1px solid #23643e;
+  color: #23643e;
+  background: transparent;
+}
+
+#retry-button:hover {
+  color: #fff;
+  background: #174a2d;
+}
+
 button,
 .status > a {
   border: 0;
@@ -378,184 +394,6 @@ button:disabled {
   font-weight: 800;
 }
 
-.retry-accordion {
-  margin-top: 0.8rem;
-  padding-top: 0.9rem;
-  border-top: 1px solid currentColor;
-}
-
-.retry-accordion-heading {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.retry-accordion-trigger {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.7rem 0;
-  border-radius: 0;
-  color: inherit;
-  background: transparent;
-  text-align: left;
-}
-
-.retry-accordion-trigger:hover {
-  color: inherit;
-  background: transparent;
-  text-decoration: underline;
-  text-underline-offset: 0.2rem;
-}
-
-.retry-accordion-trigger:focus-visible,
-.revision-select-trigger:focus-visible,
-.revision-option:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
-.retry-accordion-icon,
-.revision-select-icon {
-  position: relative;
-  width: 0.9rem;
-  height: 0.9rem;
-  flex: 0 0 auto;
-}
-
-.retry-accordion-icon::before,
-.retry-accordion-icon::after {
-  position: absolute;
-  top: 50%;
-  width: 100%;
-  height: 2px;
-  background: currentColor;
-  content: "";
-  transition: transform 160ms ease, opacity 160ms ease;
-}
-
-.retry-accordion-icon::after {
-  transform: rotate(90deg);
-}
-
-.retry-accordion-trigger[aria-expanded="true"] .retry-accordion-icon::after {
-  opacity: 0;
-  transform: rotate(0deg);
-}
-
-.retry-panel {
-  display: grid;
-  gap: 0.65rem;
-  padding: 0.15rem 0 0.35rem;
-}
-
-.retry-panel[hidden],
-.revision-listbox[hidden] {
-  display: none;
-}
-
-.retry-panel > span {
-  font-size: 0.86rem;
-}
-
-.revision-multiselect {
-  position: relative;
-  max-width: 30rem;
-}
-
-.revision-select-trigger {
-  display: flex;
-  min-height: 2.75rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.65rem 0.8rem;
-  border: 1px solid rgba(35, 100, 62, 0.25);
-  border-radius: 0.65rem;
-  color: #24332a;
-  background: rgba(255, 255, 255, 0.78);
-  cursor: pointer;
-  font-size: 0.88rem;
-  user-select: none;
-}
-
-.status.error .revision-select-trigger {
-  border-color: rgba(121, 45, 45, 0.25);
-}
-
-.revision-select-icon::before {
-  position: absolute;
-  top: 0.15rem;
-  left: 0.2rem;
-  width: 0.45rem;
-  height: 0.45rem;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-  content: "";
-  transform: rotate(45deg);
-  transition: transform 160ms ease;
-}
-
-.revision-select-trigger[aria-expanded="true"] .revision-select-icon::before {
-  top: 0.35rem;
-  transform: rotate(225deg);
-}
-
-.revision-listbox {
-  display: grid;
-  gap: 0.2rem;
-  max-height: 15rem;
-  margin-top: 0.35rem;
-  padding: 0.35rem;
-  overflow-y: auto;
-  border: 1px solid rgba(35, 100, 62, 0.25);
-  border-radius: 0.65rem;
-  color: #24332a;
-  background: #fff;
-  box-shadow: 0 0.5rem 1.4rem rgba(24, 49, 33, 0.12);
-}
-
-.revision-option {
-  display: flex;
-  min-height: 2.4rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 0.65rem;
-  border-radius: 0.45rem;
-  cursor: pointer;
-  font-size: 0.86rem;
-}
-
-.revision-option:hover,
-.revision-option:focus {
-  background: #eef5ef;
-}
-
-.revision-option[aria-selected="true"] {
-  color: #184c2e;
-  background: #e2f4e7;
-  font-weight: 700;
-}
-
-.revision-option-check {
-  visibility: hidden;
-  color: #23643e;
-  font-weight: 900;
-}
-
-.revision-option[aria-selected="true"] .revision-option-check {
-  visibility: visible;
-}
-
-.retry-message {
-  color: #792d2d;
-  font-weight: 700;
-}
-
-.retry-button {
-  justify-self: start;
-  margin-top: 0.2rem;
 }
 
 .text-link {
@@ -585,6 +423,10 @@ button:disabled {
 
   button {
     width: 100%;
+  }
+
+  .form-actions {
+    flex-direction: column;
   }
 
 }

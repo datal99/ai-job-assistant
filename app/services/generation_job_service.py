@@ -11,7 +11,6 @@ from app.models.generated_resume import (
     GenerationJobStatus,
     GenerationStage,
     GenerationStatus,
-    RevisionReason,
 )
 from app.services.cover_letter_service import (
     MissingCoverLetterTemplate,
@@ -26,46 +25,6 @@ from app.services.llm import StructuredOutputError
 
 
 logger = logging.getLogger(__name__)
-
-
-REVISION_GUIDANCE: dict[RevisionReason, str] = {
-    "summary_focus": (
-        "Make the professional summary more directly reflect the posting's "
-        "central responsibilities and required qualifications."
-    ),
-    "experience_emphasis": (
-        "Reassess which supported responsibilities and accomplishments should be "
-        "emphasized for this role."
-    ),
-    "project_selection": (
-        "Reassess project selection and prefer the projects most directly "
-        "relevant to this job."
-    ),
-    "tone_and_clarity": (
-        "Improve clarity and natural professional tone while avoiding dense "
-        "keyword-list phrasing."
-    ),
-    "preserve_source_detail": (
-        "Preserve more useful, supported detail from the master resume while "
-        "remaining concise."
-    ),
-    "role_alignment": (
-        "Strengthen alignment with the posting by making the most relevant "
-        "supported qualifications more visible."
-    ),
-    "application_specificity": (
-        "Make the application materials more specific to the role and the "
-        "candidate's supported experience."
-    ),
-}
-
-
-def build_revision_feedback(revision_reasons: list[RevisionReason] | None) -> str | None:
-    if not revision_reasons:
-        return None
-    return "\n".join(
-        f"- {REVISION_GUIDANCE[reason]}" for reason in revision_reasons
-    )
 
 
 @dataclass
@@ -125,35 +84,21 @@ class GenerationJobManager:
         job_id: str,
         raw_job_posting: str,
         include_cover_letter: bool = False,
-        revision_reasons: list[RevisionReason] | None = None,
     ) -> None:
         try:
-            revision_feedback = build_revision_feedback(revision_reasons)
             cover_letter_template = (
                 load_master_cover_letter() if include_cover_letter else None
             )
-            resume_kwargs = {
-                "progress_callback": lambda stage: self.update_stage(job_id, stage)
-            }
-            if revision_feedback:
-                resume_kwargs["revision_feedback"] = revision_feedback
             job_posting, output_path = generate_resume_from_job_posting(
                 raw_job_posting,
-                **resume_kwargs,
+                progress_callback=lambda stage: self.update_stage(job_id, stage),
             )
             cover_letter_path = None
             if include_cover_letter:
-                cover_letter_kwargs = {
-                    "template": cover_letter_template,
-                    "progress_callback": (
-                        lambda stage: self.update_stage(job_id, stage)
-                    ),
-                }
-                if revision_feedback:
-                    cover_letter_kwargs["revision_feedback"] = revision_feedback
                 cover_letter_path = generate_cover_letter(
                     job_posting,
-                    **cover_letter_kwargs,
+                    template=cover_letter_template,
+                    progress_callback=lambda stage: self.update_stage(job_id, stage),
                 )
             result = GeneratedResumeResponse(
                 company=job_posting.company,

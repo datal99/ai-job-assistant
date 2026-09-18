@@ -26,6 +26,15 @@ class JobPostingServiceTests(unittest.TestCase):
             JobPostingIdentity,
         )
         self.assertNotIn("Job description", parse.call_args.kwargs["prompt"])
+        self.assertIn(
+            "dominant responsibilities and seniority",
+            parse.call_args.kwargs["prompt"],
+        )
+        self.assertIn("Never return placeholders", parse.call_args.kwargs["prompt"])
+
+    def test_rejects_missing_role_placeholders(self):
+        with self.assertRaisesRegex(ValueError, "usable company and role title"):
+            JobPostingIdentity(company="Armanino", title="Not stated")
 
     @patch("app.services.job_posting_service.parse")
     def test_rejects_empty_posting_without_api_call(self, parse):
