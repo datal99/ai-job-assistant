@@ -43,12 +43,12 @@ GenerationStatus = Literal["queued", "running", "completed", "failed"]
 
 RevisionReason = Literal[
     "summary_focus",
-    "emphasize_programming",
+    "experience_emphasis",
     "project_selection",
-    "reduce_keyword_density",
+    "tone_and_clarity",
     "preserve_source_detail",
-    "strengthen_ai_relevance",
-    "cover_letter_specificity",
+    "role_alignment",
+    "application_specificity",
 ]
 
 

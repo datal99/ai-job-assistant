@@ -6,6 +6,7 @@ from app.models.job_posting import JobPosting
 from app.services.cover_letter_service import MissingCoverLetterTemplate
 from app.services.generation_job_service import (
     GenerationJobManager,
+    REVISION_GUIDANCE,
     build_revision_feedback,
 )
 from app.services.llm import StructuredOutputError
@@ -86,6 +87,13 @@ class GenerationJobManagerTests(unittest.TestCase):
 
         self.assertIn("professional summary", feedback)
         self.assertIn("project selection", feedback)
+
+    def test_revision_guidance_is_role_agnostic(self):
+        guidance = " ".join(REVISION_GUIDANCE.values()).lower()
+
+        self.assertNotIn("ai,", guidance)
+        self.assertNotIn("llm", guidance)
+        self.assertNotIn("devops", guidance)
 
     def test_job_history_is_bounded(self):
         manager = GenerationJobManager(max_jobs=2)

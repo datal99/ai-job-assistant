@@ -79,11 +79,11 @@ class ResumeTailoringPromptTests(unittest.TestCase):
         prompt = build_resume_tailoring_prompt(
             "AI enablement role",
             "master resume",
-            revision_feedback="- Make supported AI work more visible.",
+            revision_feedback="- Make the most relevant work more visible.",
         )
 
         self.assertIn("USER-SELECTED REVISION GOALS", prompt)
-        self.assertIn("Make supported AI work more visible.", prompt)
+        self.assertIn("Make the most relevant work more visible.", prompt)
         self.assertIn("factual-grounding rules", prompt)
 
     @patch("app.services.llm.parse")

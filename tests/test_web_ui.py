@@ -24,6 +24,16 @@ class WebUiTests(unittest.TestCase):
         self.assertIn('id="resume-form"', response.text)
         self.assertIn('id="include-cover-letter"', response.text)
 
+    def test_retry_ui_uses_accessible_accordion_and_multiselect(self):
+        response = self.client.get("/static/app.js")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('setAttribute("aria-expanded", "false")', response.text)
+        self.assertIn('setAttribute("role", "combobox")', response.text)
+        self.assertIn('setAttribute("role", "listbox")', response.text)
+        self.assertIn('setAttribute("aria-multiselectable", "true")', response.text)
+        self.assertNotIn("Highlight relevant AI work", response.text)
+
     @patch("app.main.generate_resume_from_job_posting")
     def test_generate_endpoint_returns_downloadable_filename(self, generate):
         job = JobPosting(

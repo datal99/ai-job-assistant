@@ -33,28 +33,29 @@ REVISION_GUIDANCE: dict[RevisionReason, str] = {
         "Make the professional summary more directly reflect the posting's "
         "central responsibilities and required qualifications."
     ),
-    "emphasize_programming": (
-        "Retain and emphasize supported programming and application-development "
-        "work in the employment history."
+    "experience_emphasis": (
+        "Reassess which supported responsibilities and accomplishments should be "
+        "emphasized for this role."
     ),
     "project_selection": (
         "Reassess project selection and prefer the projects most directly "
         "relevant to this job."
     ),
-    "reduce_keyword_density": (
-        "Use natural resume prose and reduce keyword-list phrasing."
+    "tone_and_clarity": (
+        "Improve clarity and natural professional tone while avoiding dense "
+        "keyword-list phrasing."
     ),
     "preserve_source_detail": (
         "Preserve more useful, supported detail from the master resume while "
         "remaining concise."
     ),
-    "strengthen_ai_relevance": (
-        "When supported by the master resume and relevant to the posting, make "
-        "AI, LLM, and agent work more visible."
+    "role_alignment": (
+        "Strengthen alignment with the posting by making the most relevant "
+        "supported qualifications more visible."
     ),
-    "cover_letter_specificity": (
-        "Make the cover letter more specific to the role and the candidate's "
-        "supported experience."
+    "application_specificity": (
+        "Make the application materials more specific to the role and the "
+        "candidate's supported experience."
     ),
 }
 

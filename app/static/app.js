@@ -241,13 +241,13 @@ async function waitForGeneration(
 }
 
 const revisionReasons = [
-  ["summary_focus", "Refocus the professional summary"],
-  ["emphasize_programming", "Emphasize programming work"],
-  ["project_selection", "Choose more relevant projects"],
-  ["reduce_keyword_density", "Make the writing less keyword-heavy"],
+  ["summary_focus", "Adjust the professional summary"],
+  ["experience_emphasis", "Emphasize different experience"],
+  ["project_selection", "Reconsider project selection"],
+  ["tone_and_clarity", "Improve tone and clarity"],
   ["preserve_source_detail", "Preserve more master-resume detail"],
-  ["strengthen_ai_relevance", "Highlight relevant AI work"],
-  ["cover_letter_specificity", "Make the cover letter more specific"],
+  ["role_alignment", "Strengthen alignment with the role"],
+  ["application_specificity", "Make the application more specific"],
 ];
 
 function addResultFile(label, baseUrl) {
@@ -278,25 +278,141 @@ function addResultFile(label, baseUrl) {
 }
 
 function addRetryControls(sourceJobId, withCoverLetter) {
+  const accordion = document.createElement("section");
+  accordion.className = "retry-accordion";
+  const heading = document.createElement("h3");
+  heading.className = "retry-accordion-heading";
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "retry-accordion-trigger";
+  trigger.id = `retry-trigger-${sourceJobId}`;
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.setAttribute("aria-controls", `retry-panel-${sourceJobId}`);
+  const triggerLabel = document.createElement("span");
+  triggerLabel.textContent = "Try another revision";
+  const accordionIcon = document.createElement("span");
+  accordionIcon.className = "retry-accordion-icon";
+  accordionIcon.setAttribute("aria-hidden", "true");
+  trigger.append(triggerLabel, accordionIcon);
+  heading.append(trigger);
+
   const panel = document.createElement("div");
   panel.className = "retry-panel";
-  const heading = document.createElement("strong");
-  heading.textContent = "Try another revision";
+  panel.id = `retry-panel-${sourceJobId}`;
+  panel.setAttribute("role", "region");
+  panel.setAttribute("aria-labelledby", trigger.id);
+  panel.hidden = true;
   const help = document.createElement("span");
   help.textContent = "Choose one or more changes for the next version.";
-  const choices = document.createElement("div");
-  choices.className = "revision-options";
 
-  revisionReasons.forEach(([value, label]) => {
-    const choice = document.createElement("label");
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.value = value;
-    const text = document.createElement("span");
-    text.textContent = label;
-    choice.append(input, text);
-    choices.append(choice);
+  const selectedReasons = new Set();
+  const multiselect = document.createElement("div");
+  multiselect.className = "revision-multiselect";
+  const selectTrigger = document.createElement("div");
+  selectTrigger.className = "revision-select-trigger";
+  selectTrigger.setAttribute("role", "combobox");
+  selectTrigger.tabIndex = 0;
+  selectTrigger.setAttribute("aria-haspopup", "listbox");
+  selectTrigger.setAttribute("aria-expanded", "false");
+  selectTrigger.setAttribute("aria-controls", `revision-listbox-${sourceJobId}`);
+  const selectedLabel = document.createElement("span");
+  selectedLabel.textContent = "Select revision reasons";
+  const selectIcon = document.createElement("span");
+  selectIcon.className = "revision-select-icon";
+  selectIcon.setAttribute("aria-hidden", "true");
+  selectTrigger.append(selectedLabel, selectIcon);
+
+  const listbox = document.createElement("div");
+  listbox.className = "revision-listbox";
+  listbox.id = `revision-listbox-${sourceJobId}`;
+  listbox.setAttribute("role", "listbox");
+  listbox.setAttribute("aria-multiselectable", "true");
+  listbox.tabIndex = -1;
+  listbox.hidden = true;
+
+  function updateSelectedLabel() {
+    const labels = revisionReasons
+      .filter(([value]) => selectedReasons.has(value))
+      .map(([, label]) => label);
+    if (!labels.length) {
+      selectedLabel.textContent = "Select revision reasons";
+    } else if (labels.length === 1) {
+      [selectedLabel.textContent] = labels;
+    } else {
+      selectedLabel.textContent = `${labels[0]} + ${labels.length - 1} more`;
+    }
+  }
+
+  function toggleOption(option) {
+    const value = option.dataset.value;
+    const selected = !selectedReasons.has(value);
+    if (selected) selectedReasons.add(value);
+    else selectedReasons.delete(value);
+    option.setAttribute("aria-selected", String(selected));
+    updateSelectedLabel();
+  }
+
+  revisionReasons.forEach(([value, label], index) => {
+    const option = document.createElement("div");
+    option.id = `revision-option-${sourceJobId}-${index}`;
+    option.className = "revision-option";
+    option.dataset.value = value;
+    option.setAttribute("role", "option");
+    option.setAttribute("aria-selected", "false");
+    option.tabIndex = index === 0 ? 0 : -1;
+    const optionLabel = document.createElement("span");
+    optionLabel.textContent = label;
+    const check = document.createElement("span");
+    check.className = "revision-option-check";
+    check.setAttribute("aria-hidden", "true");
+    check.textContent = "✓";
+    option.append(optionLabel, check);
+    option.addEventListener("click", () => toggleOption(option));
+    listbox.append(option);
   });
+
+  function setListboxOpen(open, focusOption = false) {
+    selectTrigger.setAttribute("aria-expanded", String(open));
+    listbox.hidden = !open;
+    if (open && focusOption) {
+      listbox.querySelector('[role="option"]')?.focus();
+    }
+  }
+
+  selectTrigger.addEventListener("click", () => {
+    setListboxOpen(selectTrigger.getAttribute("aria-expanded") !== "true", true);
+  });
+  selectTrigger.addEventListener("keydown", (event) => {
+    if (["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) {
+      event.preventDefault();
+      setListboxOpen(true, true);
+    }
+  });
+  listbox.addEventListener("keydown", (event) => {
+    const options = Array.from(listbox.querySelectorAll('[role="option"]'));
+    const currentIndex = options.indexOf(document.activeElement);
+    let nextIndex = currentIndex;
+    if (event.key === "ArrowDown") nextIndex = Math.min(options.length - 1, currentIndex + 1);
+    else if (event.key === "ArrowUp") nextIndex = Math.max(0, currentIndex - 1);
+    else if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = options.length - 1;
+    else if (["Enter", " "].includes(event.key)) {
+      event.preventDefault();
+      toggleOption(document.activeElement);
+      return;
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setListboxOpen(false);
+      selectTrigger.focus();
+      return;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    options.forEach((option, index) => { option.tabIndex = index === nextIndex ? 0 : -1; });
+    options[nextIndex].focus();
+  });
+  multiselect.append(selectTrigger, listbox);
 
   const retryMessage = document.createElement("span");
   retryMessage.className = "retry-message";
@@ -306,10 +422,7 @@ function addRetryControls(sourceJobId, withCoverLetter) {
   retryButton.className = "retry-button";
   retryButton.textContent = "Generate revised version";
   retryButton.addEventListener("click", async () => {
-    const selected = Array.from(
-      choices.querySelectorAll("input:checked"),
-      (input) => input.value,
-    );
+    const selected = Array.from(selectedReasons);
     if (!selected.length) {
       retryMessage.hidden = false;
       retryMessage.textContent = "Select at least one revision reason.";
@@ -336,8 +449,16 @@ function addRetryControls(sourceJobId, withCoverLetter) {
     }
   });
 
-  panel.append(heading, help, choices, retryMessage, retryButton);
-  statusPanel.append(panel);
+  trigger.addEventListener("click", () => {
+    const expanded = trigger.getAttribute("aria-expanded") !== "true";
+    trigger.setAttribute("aria-expanded", String(expanded));
+    panel.hidden = !expanded;
+    if (!expanded) setListboxOpen(false);
+  });
+
+  panel.append(help, multiselect, retryMessage, retryButton);
+  accordion.append(heading, panel);
+  statusPanel.append(accordion);
 }
 
 function renderCompletedGeneration(job, sourceJobId, withCoverLetter) {
