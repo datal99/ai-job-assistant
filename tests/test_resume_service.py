@@ -106,7 +106,10 @@ class GenerateResumeFromJobPostingTests(unittest.TestCase):
         self.assertEqual(output_path.name, "output.tex")
         extract_job_posting.assert_called_once_with("raw posting")
         tailor_resume.assert_called_once_with(self.job.description)
-        validate_resume.assert_called_once_with(self.tailored)
+        validate_resume.assert_called_once_with(
+            self.tailored,
+            self.job.description,
+        )
         render_resume.assert_called_once_with(
             template="template",
             master_resume_data=self.master,
@@ -148,23 +151,27 @@ class GenerateResumeFromJobPostingTests(unittest.TestCase):
         with self.assertRaises(ResumeGroundingError):
             generate_resume_from_job_posting("raw posting")
 
-        validate_resume.assert_called_once_with(self.tailored)
+        validate_resume.assert_called_once_with(
+            self.tailored,
+            self.job.description,
+        )
         save_generated_resume.assert_not_called()
 
-    @patch("app.services.resume_service.validate_resume_experience")
+    @patch("app.services.resume_service.validate_tailored_resume_content")
     @patch("app.services.resume_service.load_master_resume")
     def test_validation_accepts_grounded_experience(self, load, validate):
         load.return_value = "master source"
         validate.return_value = ResumeValidationResult(is_valid=True, issues=[])
 
-        validate_tailored_resume(self.tailored)
+        validate_tailored_resume(self.tailored, "target job")
 
         validate.assert_called_once_with(
+            job_description="target job",
             master_resume="master source",
             tailored_resume=self.tailored,
         )
 
-    @patch("app.services.resume_service.validate_resume_experience")
+    @patch("app.services.resume_service.validate_tailored_resume_content")
     @patch("app.services.resume_service.load_master_resume")
     def test_validation_blocks_unsupported_experience(self, load, validate):
         load.return_value = "master source"
@@ -172,8 +179,9 @@ class GenerateResumeFromJobPostingTests(unittest.TestCase):
             is_valid=False,
             issues=[
                 ResumeValidationIssue(
-                    experience="Example Employer — Engineer",
-                    generated_bullet="Led a Kubernetes migration.",
+                    section="experience",
+                    item="Example Employer — Engineer",
+                    generated_text="Led a Kubernetes migration.",
                     reason="Kubernetes is not associated with this role.",
                 )
             ],
@@ -183,7 +191,7 @@ class GenerateResumeFromJobPostingTests(unittest.TestCase):
             ResumeGroundingError,
             "Kubernetes is not associated with this role",
         ):
-            validate_tailored_resume(self.tailored)
+            validate_tailored_resume(self.tailored, "target job")
 
 
 if __name__ == "__main__":

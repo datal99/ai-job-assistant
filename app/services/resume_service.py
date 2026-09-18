@@ -9,7 +9,7 @@ from app.models.job_posting import JobPosting
 from app.services.job_posting_service import extract_job_posting
 from app.services.llm import (
     generate_tailored_resume,
-    validate_resume_experience,
+    validate_tailored_resume_content,
 )
 from app.services.master_resume_parser import extract_master_resume_data
 from app.services.resume_renderer import render_resume
@@ -54,10 +54,14 @@ def tailor_resume(job_description: str) -> TailoredResume:
     )
 
 
-def validate_tailored_resume(tailored_resume: TailoredResume) -> None:
-    """Block generated experience that is not grounded in the master resume."""
+def validate_tailored_resume(
+    tailored_resume: TailoredResume,
+    job_description: str,
+) -> None:
+    """Block unsupported claims and material omissions before rendering."""
     master_resume = load_master_resume()
-    result = validate_resume_experience(
+    result = validate_tailored_resume_content(
+        job_description=job_description,
         master_resume=master_resume,
         tailored_resume=tailored_resume,
     )
@@ -65,7 +69,7 @@ def validate_tailored_resume(tailored_resume: TailoredResume) -> None:
         return
 
     reasons = "; ".join(
-        f"{issue.experience}: {issue.reason}"
+        f"{issue.item}: {issue.reason}"
         for issue in result.issues[:3]
     )
     detail = f" Issues: {reasons}" if reasons else ""
@@ -110,7 +114,7 @@ def generate_resume_from_job_posting(
     tailored_resume = tailor_resume(job_posting.description)
 
     report("validating_resume")
-    validate_tailored_resume(tailored_resume)
+    validate_tailored_resume(tailored_resume, job_posting.description)
 
     report("rendering_resume")
     master_resume_data = extract_master_resume_data()
