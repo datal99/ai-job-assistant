@@ -17,7 +17,10 @@ from app.services.cover_letter_service import (
     generate_cover_letter,
     load_master_cover_letter,
 )
-from app.services.resume_service import generate_resume_from_job_posting
+from app.services.resume_service import (
+    ResumeGroundingError,
+    generate_resume_from_job_posting,
+)
 from app.services.llm import StructuredOutputError
 
 
@@ -107,6 +110,9 @@ class GenerationJobManager:
                 job_id,
                 "OpenAI returned an incomplete response. Please try again.",
             )
+            return
+        except ResumeGroundingError as error:
+            self.fail(job_id, str(error))
             return
         except MissingCoverLetterTemplate:
             self.fail(

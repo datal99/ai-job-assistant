@@ -35,6 +35,7 @@ from app.services.resume_file_service import (
 from app.services.resume_service import (
     GENERATED_RESUME_DIR,
     MASTER_RESUME_PATH,
+    ResumeGroundingError,
     generate_resume_from_job_posting,
 )
 
@@ -99,8 +100,6 @@ Analyze the candidate and return:
             status_code=502,
             detail="OpenAI returned an incomplete response. Please try again.",
         ) from error
-
-
 @app.post("/resumes/tailor", response_model=GeneratedResumeResponse)
 def generate_resume(request: GenerateResumeRequest):
     try:
@@ -131,6 +130,8 @@ def generate_resume(request: GenerateResumeRequest):
             status_code=502,
             detail="OpenAI returned an incomplete response. Please try again.",
         ) from error
+    except ResumeGroundingError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     except MissingCoverLetterTemplate as error:
         raise HTTPException(
             status_code=409,

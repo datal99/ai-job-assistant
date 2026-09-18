@@ -5,6 +5,7 @@ from unittest.mock import patch
 from pydantic import ValidationError
 
 from app.models import JobAnalysisResponse
+from app.models.resume_validation import ResumeValidationResult
 from app.models.tailored_resume import TailoredResume
 from app.services.llm import (
     MODEL,
@@ -13,6 +14,7 @@ from app.services.llm import (
     generate_tailored_resume,
     parse,
     StructuredOutputError,
+    validate_tailored_resume_content,
 )
 
 
@@ -31,6 +33,8 @@ class ResumeTailoringPromptTests(unittest.TestCase):
         self.assertIn('resume construction such as "Strong background in..."', prompt)
         self.assertNotIn("sentence fragments, first-person language", prompt)
         self.assertIn("only when the job description makes it relevant", prompt)
+        self.assertIn("Preserve the primary nature of every employment role", prompt)
+        self.assertIn("include all projects from the master CV", prompt)
         self.assertIn("Build reliable payment services.", prompt)
         self.assertIn("Four years of supported software experience.", prompt)
 
@@ -63,6 +67,37 @@ class ModelConfigurationTests(unittest.TestCase):
         self.assertIs(result, expected)
         self.assertEqual(responses_parse.call_args.kwargs["model"], MODEL)
 
+
+class ResumeExperienceValidationPromptTests(unittest.TestCase):
+    @patch("app.services.llm.parse")
+    def test_validation_requires_employer_specific_grounding(self, parse):
+        tailored = TailoredResume.model_construct(experience=[], projects=[])
+        expected = ResumeValidationResult(is_valid=True, issues=[])
+        parse.return_value = expected
+
+        result = validate_tailored_resume_content(
+            "AI platform role",
+            "master source",
+            tailored,
+        )
+
+        self.assertIs(result, expected)
+        self.assertIs(
+            parse.call_args.kwargs["response_model"],
+            ResumeValidationResult,
+        )
+        prompt = parse.call_args.kwargs["prompt"]
+        self.assertIn("generated experience and project selections", prompt)
+        self.assertIn("correct employer and position", prompt)
+        self.assertIn("does not prove", prompt)
+        self.assertIn("Do not accept a plausible inference", prompt)
+        self.assertIn("application-development evidence", prompt)
+        self.assertIn("less relevant non-AI project", prompt)
+        self.assertIn("AI platform role", prompt)
+        self.assertIn("master source", prompt)
+
+
+class StructuredOutputParsingTests(unittest.TestCase):
     @patch("app.services.llm.client.responses.parse")
     def test_structured_generation_retries_invalid_json(self, responses_parse):
         invalid = ValidationError.from_exception_data("Test", [])

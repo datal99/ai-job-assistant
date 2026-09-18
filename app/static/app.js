@@ -176,6 +176,7 @@ jobPosting.addEventListener("input", () => {
 const generationStages = [
   ["reading_job_posting", "Reading the job posting"],
   ["tailoring_resume", "Tailoring resume content"],
+  ["validating_resume", "Checking experience against the master resume"],
   ["rendering_resume", "Rendering and saving the resume"],
   ["tailoring_cover_letter", "Writing the cover letter"],
   ["rendering_cover_letter", "Rendering and saving the cover letter"],
@@ -184,7 +185,7 @@ const generationStages = [
 function showWorkingStatus(stage, elapsedSeconds, withCoverLetter) {
   const visibleStages = withCoverLetter
     ? generationStages
-    : generationStages.slice(0, 3);
+    : generationStages.slice(0, 4);
   let timer = statusPanel.querySelector("[data-working-timer]");
   if (!timer) {
     statusPanel.replaceChildren();

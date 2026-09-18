@@ -7,7 +7,10 @@ from app.models import TailoredResume
 from app.models.generated_resume import GenerationStage
 from app.models.job_posting import JobPosting
 from app.services.job_posting_service import extract_job_posting
-from app.services.llm import generate_tailored_resume
+from app.services.llm import (
+    generate_tailored_resume,
+    validate_tailored_resume_content,
+)
 from app.services.master_resume_parser import extract_master_resume_data
 from app.services.resume_renderer import render_resume
 from app.services.template_service import load_resume_template
@@ -16,6 +19,10 @@ from app.services.template_service import load_resume_template
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MASTER_RESUME_PATH = PROJECT_ROOT / "resumes/master/master_resume.tex"
 GENERATED_RESUME_DIR = PROJECT_ROOT / "resumes/generated"
+
+
+class ResumeGroundingError(RuntimeError):
+    """Raised when generated experience contains unsupported claims."""
 
 
 def load_master_resume() -> str:
@@ -44,6 +51,31 @@ def tailor_resume(job_description: str) -> TailoredResume:
     return generate_tailored_resume(
         job_description=job_description,
         master_resume=master_resume,
+    )
+
+
+def validate_tailored_resume(
+    tailored_resume: TailoredResume,
+    job_description: str,
+) -> None:
+    """Block unsupported claims and material omissions before rendering."""
+    master_resume = load_master_resume()
+    result = validate_tailored_resume_content(
+        job_description=job_description,
+        master_resume=master_resume,
+        tailored_resume=tailored_resume,
+    )
+    if result.is_valid and not result.issues:
+        return
+
+    reasons = "; ".join(
+        f"{issue.item}: {issue.reason}"
+        for issue in result.issues[:3]
+    )
+    detail = f" Issues: {reasons}" if reasons else ""
+    raise ResumeGroundingError(
+        "Generated experience was not saved because it could not be verified "
+        f"against the master resume.{detail}"
     )
 
 
@@ -80,6 +112,9 @@ def generate_resume_from_job_posting(
 
     report("tailoring_resume")
     tailored_resume = tailor_resume(job_posting.description)
+
+    report("validating_resume")
+    validate_tailored_resume(tailored_resume, job_posting.description)
 
     report("rendering_resume")
     master_resume_data = extract_master_resume_data()
