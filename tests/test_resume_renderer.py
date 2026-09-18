@@ -102,6 +102,68 @@ class ExperienceAlignmentTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "First Employer"):
             align_experience(self.master, tailored)
 
+    def test_position_variation_is_safe_for_a_unique_employer(self):
+        tailored = TailoredResume.model_construct(
+            experience=[
+                TailoredExperience(
+                    company="Second Employer",
+                    position="Technical Support Specialist",
+                    bullets=[TailoredBullet(header="Support", content="Second")],
+                ),
+                TailoredExperience(
+                    company="First Employer",
+                    position="Software Developer",
+                    bullets=[TailoredBullet(header="Development", content="First")],
+                ),
+            ]
+        )
+
+        aligned = align_experience(self.master, tailored)
+
+        self.assertEqual(
+            [master.position for master, _ in aligned],
+            ["Developer", "Support Engineer"],
+        )
+        self.assertEqual(
+            [generated.company for _, generated in aligned],
+            ["First Employer", "Second Employer"],
+        )
+
+    def test_position_variation_is_rejected_for_repeated_employer(self):
+        master = MasterResume(
+            experience=[
+                MasterExperience(
+                    company="Same Employer",
+                    location="Remote",
+                    position="Developer",
+                    dates="2022--Present",
+                ),
+                MasterExperience(
+                    company="Same Employer",
+                    location="Remote",
+                    position="Support Engineer",
+                    dates="2020--2022",
+                ),
+            ]
+        )
+        tailored = TailoredResume.model_construct(
+            experience=[
+                TailoredExperience(
+                    company="Same Employer",
+                    position="Engineer I",
+                    bullets=[],
+                ),
+                TailoredExperience(
+                    company="Same Employer",
+                    position="Engineer II",
+                    bullets=[],
+                ),
+            ]
+        )
+
+        with self.assertRaisesRegex(ValueError, "Developer"):
+            align_experience(master, tailored)
+
 
 if __name__ == "__main__":
     unittest.main()

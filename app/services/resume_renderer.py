@@ -1,4 +1,5 @@
 import re
+from collections import Counter
 from pathlib import Path
 
 from app.models.master_resume import MasterExperience, MasterResume
@@ -53,33 +54,41 @@ def align_experience(
     tailored_resume: TailoredResume,
 ) -> list[tuple[MasterExperience, TailoredExperience]]:
     """Match generated bullets to fixed experience records by identity."""
-    tailored_by_identity: dict[tuple[str, str], TailoredExperience] = {}
-    for experience in tailored_resume.experience:
-        identity = (
-            normalize_experience_identity(experience.company),
-            normalize_experience_identity(experience.position),
-        )
-        if identity in tailored_by_identity:
-            raise ValueError(
-                "Generated resume contains a duplicate employer and position."
-            )
-        tailored_by_identity[identity] = experience
+    remaining = list(tailored_resume.experience)
+    master_company_counts = Counter(
+        normalize_experience_identity(experience.company)
+        for experience in master_resume.experience
+    )
 
     aligned = []
     for experience in master_resume.experience:
-        identity = (
-            normalize_experience_identity(experience.company),
-            normalize_experience_identity(experience.position),
-        )
-        tailored = tailored_by_identity.pop(identity, None)
-        if tailored is None:
+        company = normalize_experience_identity(experience.company)
+        position = normalize_experience_identity(experience.position)
+        company_matches = [
+            candidate
+            for candidate in remaining
+            if normalize_experience_identity(candidate.company) == company
+        ]
+        exact_matches = [
+            candidate
+            for candidate in company_matches
+            if normalize_experience_identity(candidate.position) == position
+        ]
+
+        if len(exact_matches) == 1:
+            tailored = exact_matches[0]
+        elif len(company_matches) == 1 and master_company_counts[company] == 1:
+            tailored = company_matches[0]
+        else:
             raise ValueError(
                 "Generated experience does not match the master resume "
                 f"entry for {experience.company} — {experience.position}."
             )
-        aligned.append((experience, tailored))
 
-    if tailored_by_identity:
+        aligned.append((experience, tailored))
+        remaining.remove(tailored)
+
+    if remaining:
         raise ValueError(
             "Generated resume contains an experience that is not in the "
             "master resume."
